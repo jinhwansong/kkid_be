@@ -1,0 +1,29 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.8.1
+        with:
+          ssh-private-key: ${{ secrets.EC2_PRIVATE_KEY }}
+
+      - name: Pull and restart on EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@<EC2_PUBLIC_IP> << EOF
+            cd ~/kkid_be
+            git pull origin main
+            npm install
+            npm run build
+            pm2 restart kkid || pm2 start dist/main.js --name kkid
+          EOF
