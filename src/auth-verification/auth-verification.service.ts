@@ -17,7 +17,7 @@ export class AuthVerificationService {
       }));
       return data
     } catch (error) {
-      throw new UnauthorizedException('Invalid token');
+      throw new UnauthorizedException('유효하지 않은 토큰');
     }
   }
 }

@@ -7,61 +7,37 @@ import {
   Post,
   Query,
   Req,
-  UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import * as multer from 'multer';
 import { VideoService } from './video.service';
-import { createUserDto, videoUploadDto } from './dto/video.dto';
+import { createUserDto, getMyVideoDto, MuxVideoDto, registerMuxVideoDto } from './dto/video.dto';
 import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
+import { MuxService } from '@/mux/mux.service';
+import { MuxUploadResponseDto } from './dto/mux.dto';
 
 @UseInterceptors(
   FileInterceptor('video', {
     storage: multer.memoryStorage(),
   }),
 )
+@ApiTags('Video')
 @Controller('video')
 export class VideoController {
   constructor(
     private readonly videoService: VideoService,
+    private readonly muxService: MuxService,
     private readonly authVerifService: AuthVerificationService,
   ) {}
-  @ApiOperation({ summary: '영상업로드' })
-  @ApiResponse({
-    status: 201,
-    description: '영상업로드가 완료되었습니다.',
-    type: videoUploadDto,
-  })
-  @ApiResponse({
-    status: 400,
-    description: '잘못된 요청',
-  })
-  @ApiResponse({
-    status: 500,
-    description: '서버 에러',
-  })
-  @Post('upload')
-  async upload(
-    @Headers('authorization') authHeader: string,
-    @Body() body: videoUploadDto,
-    @UploadedFile() file: Express.Multer.File,
-  ) {
-    const token = authHeader?.replace('Bearer', '');
-    const user = await this.authVerifService.verifyTokenAndGetUser(token);
-    return this.videoService.uploadForVideo(user, body, file);
-  }
 
   @ApiOperation({ summary: '내가 업로드한 영상' })
   @ApiResponse({
     status: 201,
     description: '업로드한 영상 목록입니다.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: '잘못된 요청',
+    type: getMyVideoDto,
   })
   @ApiResponse({
     status: 500,
@@ -87,7 +63,7 @@ export class VideoController {
     description: '넘길 개수',
     example: 0,
   })
-  @Get('getMyVideos')
+  @Get('my')
   async getMyVideos(
     @Headers('authorization') authHeader: string,
     @Query('take') take = 10,
@@ -100,12 +76,9 @@ export class VideoController {
   }
   @ApiOperation({ summary: '숏츠 영상 무한스크롤 조회' })
   @ApiResponse({
-    status: 201,
+    status: 200,
     description: '숏츠 영상 무한스크롤 조회 목록입니다.',
-  })
-  @ApiResponse({
-    status: 400,
-    description: '잘못된 요청',
+    type: getMyVideoDto,
   })
   @ApiResponse({
     status: 500,
@@ -170,6 +143,33 @@ export class VideoController {
     const token = authHeader?.replace('Bearer', '');
     const user = await this.authVerifService.verifyTokenAndGetUser(token);
     return this.videoService.toggleLike(videoId, user);
+  }
+  @ApiOperation({ summary: 'Mux upload용 URL 발급' })
+  @ApiResponse({
+    status: 201,
+    description: 'Direct Upload용 Mux URL 발급',
+    type: MuxUploadResponseDto,
+  })
+  @Post('uploadUrl')
+  async getUploadUrl(@Headers('authorization') authHeader: string) {
+    const token = authHeader?.replace('Bearer', '');
+    const user = await this.authVerifService.verifyTokenAndGetUser(token);
+    return this.muxService.createDirectUpload(user);
+  }
+  @ApiOperation({ summary: 'Mux 업로드 완료 후 등록 요청' })
+  @ApiResponse({
+    status: 201,
+    description: 'Mux 영상 등록 성공',
+    type: MuxVideoDto,
+  })
+  @Post('register')
+  async registerMuxVideo(
+    @Headers('authorization') authHeader: string,
+    @Body() body: registerMuxVideoDto,
+  ) {
+    const token = authHeader?.replace('Bearer', '');
+    const user = await this.authVerifService.verifyTokenAndGetUser(token);
+    return this.videoService.registerMuxVideo(user, body);
   }
 }
 

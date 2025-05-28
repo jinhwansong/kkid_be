@@ -1,16 +1,14 @@
-import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
-import { Vimeo } from 'vimeo';
-import { createUserDto, videoUploadDto } from './dto/video.dto';
-import { Readable } from 'stream';
+import { createUserDto, registerMuxVideoDto } from './dto/video.dto';
 import { Like, User, Video } from '@/entities';
 import { RedisService } from '@/redis/redis.service';
+import { MuxService } from '@/mux/mux.service';
+
+
 @Injectable()
 export class VideoService {
-  private readonly vimeoClient: Vimeo;
-  private readonly logger = new Logger(VideoService.name);
   constructor(
     @InjectRepository(Video)
     private readonly videoRepository: Repository<Video>,
@@ -18,150 +16,124 @@ export class VideoService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Like)
     private readonly likeRepository: Repository<Like>,
-    private readonly configService: ConfigService,
     private readonly redisService: RedisService,
-  ) {
-    this.vimeoClient = new Vimeo(
-      this.configService.get<string>('VIMEO_ACCESS_TOKEN'),
-      this.configService.get<string>('VIMEO_CLIENT_ID'),
-      this.configService.get<string>('VIMEO_CLIENT_SECRET'),
-    );
-  }
-  // 영상 업로드
-  async uploadForVideo(
-    info: createUserDto,
-    body: videoUploadDto,
-    file: Express.Multer.File,
-  ) {
+    private readonly muxService: MuxService,
+  ) {}
+  // 사용자가 업로드 후 등록 요청을 보냄
+  async registerMuxVideo(info: createUserDto, body: registerMuxVideoDto) {
     // 사용자 확인
     let user = await this.userRepository.findOne({
       where: { email: info.email },
     });
     // 없으면 생성
     if (!user) {
-      user = await this.userRepository.create(info);
+      user = this.userRepository.create(info);
       await this.userRepository.save(user);
     }
-    // 업로드
-    const { videoUrl, thumbnailUrl } = await this.uploadToVimeo(file, body);
-    const video = await this.videoRepository.create({
+    const { playbackUrl, thumbnailUrl } =
+      await this.muxService.getMuxPlaybackInfo(body.uploadId);
+
+    // db에 저장
+    const video = this.videoRepository.create({
       title: body.title,
       description: body.description,
-      videoUrl: videoUrl,
+      videoUrl: playbackUrl,
+      thumbnailUrl,
       user,
-      viewCount: 0,
-      thumbnailUrl: thumbnailUrl,
     });
-    const saveVideo = await this.videoRepository.save(video);
-
+    const save = await this.videoRepository.save(video);
     return {
-      message: '영상이 업로드 되었습니다.',
-      url: saveVideo.videoUrl,
-      count: saveVideo.viewCount,
-      title: saveVideo.title,
-      description: saveVideo.description,
-      createDate: saveVideo.createdAt,
+      message: '영상 등록 완료',
+      id: save.id,
+      videoUrl: save.videoUrl,
+      thumbnailUrl: save.thumbnailUrl,
+      title: save.title,
+      description: save.description,
+      viewCount: save.viewCount,
+      updatedAt: save.updatedAt,
     };
   }
-  private async uploadToVimeo(
-    file: Express.Multer.File,
-    body: videoUploadDto,
-  ): Promise<{ videoUrl: string; thumbnailUrl: string }> {
-    return new Promise((resolve, reject) => {
-      const stream = Readable.from(file.buffer);
-      this.vimeoClient.upload(
-        stream,
-        { name: body.title, description: body.description },
-        (url: string) => {
-          const videoUrl = `https://vimeo.com${url}`;
-          // 썸네일 내놔 이자식아
-          this.vimeoClient.request(
-            {
-              method: 'GET',
-              path: url,
-            },
-            (error, body, statusCode, headers) => {
-              if (error) {
-                this.logger.error('메타 데이터 요청 실패', error);
-                return reject(error);
-              }
-              const size = body?.pictures?.sizes;
-              const thumbnailUrl = size?.[3]?.link || size?.[0]?.link;
-              resolve({ videoUrl, thumbnailUrl });
-            },
-          );
-        },
-        // 업로드 퍼센트
-        (uploaded, total) => {
-          const percent = ((uploaded / total) * 100).toFixed(2);
-          this.logger.log(`업로드퍼센트: ${percent}%`);
-        },
-        (error) => {
-          this.logger.error('vimeo에 업로드 실패', error);
-          reject(error);
-        },
-      );
-    });
-  }
-  // 모든 영상 뿌리기
+  // 전체 영상 목록
   async getVideos(
     take: number,
     lastCreatedAt?: Date,
     order: 'latest' | 'popular' = 'latest',
   ) {
-    const video = this.videoRepository
+    const query = this.videoRepository
       .createQueryBuilder('video')
       .leftJoinAndSelect('video.user', 'user')
       .leftJoinAndSelect('video.comment', 'comment')
       .leftJoinAndSelect('video.like', 'like')
+      .loadRelationCountAndMap('video.likeCount', 'like')
+      .loadRelationCountAndMap('video.commentCount', 'comment')
       .take(take)
       .orderBy(
         order === 'popular' ? 'video.viewCount' : 'video.createdAt',
         'DESC',
       );
     if (lastCreatedAt && order === 'latest') {
-      video.where('video.createdAt < :lastCreatedAt', { lastCreatedAt });
+      query.where('video.createdAt < :lastCreatedAt', { lastCreatedAt });
     }
-    const videos = await video.getMany();
+    const videos = await query.getMany();
     return {
       nextCursor:
         videos.length > 0 ? videos[videos.length - 1].createdAt : null,
-      data: videos,
+      data: videos.map((item) => ({
+        id: item.id,
+        title: item.title,
+        description: item.description,
+        videoUrl: item.videoUrl,
+        thumbnailUrl: item.thumbnailUrl,
+        viewCount: item.viewCount,
+        updatedAt: item.updatedAt,
+        likeCount: (item as any).likeCount ?? item.like?.length ?? 0,
+        commentCount: (item as any).commentCount ?? item.comment?.length ?? 0,
+        username: item.user.username,
+      })),
     };
   }
-  // 내가 올린 영상
+  // 내가 올린 영상목록
   async getMyVideos(
     info: createUserDto,
     take: number,
     skip: number,
     order: 'latest' | 'popular',
   ) {
+    // 사용자 확인
     const user = await this.userRepository.findOne({
       where: { email: info.email },
     });
-    // 유저 인증은 됫지만 내디비에는 없을경우
     if (!user) {
-      return {
-        total: 0,
-        data: [],
-      };
+      return { total: 0, data: [] };
     }
-    const video = this.videoRepository
+    const query = this.videoRepository
       .createQueryBuilder('video')
       .where('video.userId = :userId', { userId: user.id })
       .leftJoinAndSelect('video.comment', 'comment')
       .leftJoinAndSelect('video.like', 'like')
+      .loadRelationCountAndMap('video.likeCount', 'video.like')
+      .loadRelationCountAndMap('video.commentCount', 'video.comment')
       .orderBy(
         order === 'popular' ? 'video.viewCount' : 'video.createdAt',
         'DESC',
       )
       .skip(skip)
       .take(take);
-
-    const [videos, total] = await video.getManyAndCount();
+    const [videos, total] = await query.getManyAndCount();
     return {
       total,
-      data: videos,
+      data: videos.map((v) => ({
+        id: v.id,
+        title: v.title,
+        description: v.description,
+        videoUrl: v.videoUrl,
+        thumbnailUrl: v.thumbnailUrl,
+        viewCount: v.viewCount,
+        updatedAt: v.updatedAt,
+        likeCount: (v as any).likeCount ?? v.like?.length ?? 0,
+        commentCount: (v as any).commentCount ?? v.comment?.length ?? 0,
+        username: v.user.username,
+      })),
     };
   }
   // 뷰 카운트
@@ -252,5 +224,5 @@ export class VideoService {
       liked: !likeEx,
       likeCount: Number(likeCount),
     };
-  };
+  }
 }

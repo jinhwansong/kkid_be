@@ -13,6 +13,7 @@ import { CommentController } from './comment/comment.controller';
 import { CommentModule } from './comment/comment.module';
 import { RedisModule } from './redis/redis.module';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
+import { MuxService } from './mux/mux.service';
 import * as Entities from './entities';
 
 @Module({
@@ -52,7 +53,7 @@ import * as Entities from './entities';
     HttpModule,
   ],
   controllers: [AppController, VideoController, CommentController],
-  providers: [AppService, AuthVerificationService],
+  providers: [AppService, AuthVerificationService, MuxService],
 })
 export class AppModule implements NestModule {
   constructor(private dataSource: DataSource) {}

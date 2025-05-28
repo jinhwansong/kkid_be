@@ -35,6 +35,20 @@ export class User {
     nullable: false,
   })
   email: string;
+  @IsEmail()
+  @IsNotEmpty()
+  @ApiProperty({
+    example: '트탈라레오 트랄랄라',
+    description: '인증된 유저 이름',
+    required: true,
+  })
+  @Column({
+    type: 'varchar',
+    length: 30,
+    unique: true,
+    nullable: false,
+  })
+  username: string;
   @ApiProperty({
     example: '2023-05-09T12:34:56Z',
     description: '계정 생성일',
