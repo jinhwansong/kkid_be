@@ -41,7 +41,7 @@ import * as Entities from './entities';
       retryAttempts: 3,
       retryDelay: 3000,
       // 직접 만들고 db에 만들때 처음에 만들때만 true로
-      synchronize: false,
+      synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
       extra: {
         connectionLimit: 10, // 동시 연결 수 제한
       },
