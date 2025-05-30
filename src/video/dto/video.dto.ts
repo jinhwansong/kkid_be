@@ -1,30 +1,76 @@
-import { User, Video } from '@/entities';
-import { ApiProperty, IntersectionType, PickType } from '@nestjs/swagger';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
 
-export class videoUploadDto extends PickType(Video, ['title', 'description']) {
+export class VideoUploadDto {
+  @ApiProperty({
+    example: '재미있게 합주한 아이스크림',
+    description: '비디오 제목',
+  })
+  @IsString()
+  @IsNotEmpty()
+  title: string;
+
+  @ApiProperty({
+    example: '다같이 아이스크림 췃어요',
+    description: '비디오 설명',
+  })
+  @IsString()
+  @IsNotEmpty()
+  description: string;
 }
-export class registerMuxVideoDto extends videoUploadDto {
-  @ApiProperty({ example: 'upload-xyz456', description: '업로드 아이디' })
-  uploadId: string;
+
+export class CreateUserDto {
+  @ApiProperty({ example: 'user@example.com', description: '이메일' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '트탈라레오', description: '사용자 이름' })
+  @IsString()
+  username: string;
 }
-export class createUserDto extends PickType(User, ['email']) {}
 
-export class MuxVideoDto extends IntersectionType(
-  PickType(Video, [
-  'id',
-  'title',
-  'description',
-  'videoUrl',
-  'thumbnailUrl',
-  'viewCount',
-  'updatedAt',
-]),
-PickType(User, [
-  'username',
-])
-){}
+export class VideoResponseDto {
+  @ApiProperty({
+    example: 'b1a8f3e1-3b0f-4e9b-98a2-c4f0e6d3a3b4',
+    description: '영상 UUID',
+  })
+  id: string;
 
-export class getMyVideoDto extends MuxVideoDto {
+  @ApiProperty({
+    example: '재미있게 합주한 아이스크림',
+    description: '비디오 제목',
+  })
+  title: string;
+
+  @ApiProperty({
+    example: '다같이 아이스크림 췃어요',
+    description: '비디오 설명',
+  })
+  description: string;
+
+  @ApiProperty({
+    example: 'https://mybucket.com/video/1234.mp4',
+    description: '비디오 재생 URL',
+  })
+  videoUrl: string;
+
+  @ApiProperty({ example: 103, description: '조회수' })
+  viewCount: number;
+
+  @ApiProperty({
+    example: 'https://picsum.photos/200/300',
+    description: '썸네일 이미지 URL',
+  })
+  thumbnailUrl: string;
+
+  @ApiProperty({ example: '2023-05-09T12:34:56Z', description: '최종 수정일' })
+  updatedAt: Date;
+
+  @ApiProperty({ example: 'username123', description: '사용자 이름' })
+  username: string;
+}
+
+export class GetMyVideoDto extends VideoResponseDto {
   @ApiProperty({ example: 103, description: '조회수' })
   viewCount: number;
 

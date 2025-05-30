@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   Headers,
+  HttpCode,
   Param,
   Post,
   Query,
@@ -12,12 +13,12 @@ import {
 import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import * as multer from 'multer';
 import { VideoService } from './video.service';
-import { createUserDto, getMyVideoDto, MuxVideoDto, registerMuxVideoDto } from './dto/video.dto';
 import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { Request } from 'express';
 import { MuxService } from '@/mux/mux.service';
-import { MuxUploadResponseDto } from './dto/mux.dto';
+import { MuxUploadResponseDto, RegisterMuxVideoDto } from './dto/mux.dto';
+import { CreateUserDto, GetMyVideoDto, VideoResponseDto } from './dto/video.dto';
 
 @UseInterceptors(
   FileInterceptor('video', {
@@ -32,12 +33,11 @@ export class VideoController {
     private readonly muxService: MuxService,
     private readonly authVerifService: AuthVerificationService,
   ) {}
-
   @ApiOperation({ summary: '내가 업로드한 영상' })
   @ApiResponse({
     status: 201,
     description: '업로드한 영상 목록입니다.',
-    type: getMyVideoDto,
+    type: GetMyVideoDto,
   })
   @ApiResponse({
     status: 500,
@@ -78,7 +78,7 @@ export class VideoController {
   @ApiResponse({
     status: 200,
     description: '숏츠 영상 무한스크롤 조회 목록입니다.',
-    type: getMyVideoDto,
+    type: GetMyVideoDto,
   })
   @ApiResponse({
     status: 500,
@@ -115,25 +115,7 @@ export class VideoController {
       order,
     );
   }
-  @ApiOperation({ summary: '조회수 증가' })
-  @Post(':videoId')
-  async viewCountVideos(
-    @Param('videoId') videoId: string,
-    @Req() req: Request,
-    @Headers('authorization') authHeader?: string,
-    @Headers('x-forwarded-for') ip?: string,
-  ) {
-    let info: createUserDto | undefined = undefined;
-    // 로그인 한 사람꺼만
-    if (authHeader) {
-      const token = authHeader?.replace('Bearer', '');
-      const user = await this.authVerifService.verifyTokenAndGetUser(token);
-      info = { email: user.email };
-    }
-    // 로그인 안한 친구는 ip 내놔....
-    const clientIp = ip || req.socket.remoteAddress || 'unknown';
-    return this.videoService.viewCountVideos(videoId, info, clientIp);
-  }
+
   @ApiOperation({ summary: '영상 좋아요' })
   @Post('like/:videoId')
   async toggleLike(
@@ -160,16 +142,44 @@ export class VideoController {
   @ApiResponse({
     status: 201,
     description: 'Mux 영상 등록 성공',
-    type: MuxVideoDto,
+    type: VideoResponseDto,
   })
   @Post('register')
   async registerMuxVideo(
+    @Body() body: RegisterMuxVideoDto,
     @Headers('authorization') authHeader: string,
-    @Body() body: registerMuxVideoDto,
   ) {
     const token = authHeader?.replace('Bearer', '');
     const user = await this.authVerifService.verifyTokenAndGetUser(token);
+
     return this.videoService.registerMuxVideo(user, body);
+  }
+  @ApiOperation({ summary: '웹훅' })
+  @Post('webhook/mux')
+  @HttpCode(200)
+  async muxWebHook(@Body() payload: any) {
+    return this.videoService.muxWebHook(payload);
+  }
+  @ApiOperation({ summary: '조회수 증가' })
+  @Post(':videoId')
+  async viewCountVideos(
+    @Param('videoId') videoId: string,
+    @Req() req: Request,
+    @Headers('authorization') authHeader?: string,
+    @Headers('x-forwarded-for') ip?: string,
+  ) {
+    let info: CreateUserDto;
+    // 로그인 한 사람꺼만
+    if (authHeader) {
+      const token = authHeader?.replace('Bearer', '');
+      const user = await this.authVerifService.verifyTokenAndGetUser(token);
+      info = { email: user.email, username: user.username };
+    } else {
+      info = { email: 'test@example.com', username: 'test' };
+    }
+    // 로그인 안한 친구는 ip 내놔....
+    const clientIp = ip || req.socket.remoteAddress || 'unknown';
+    return this.videoService.viewCountVideos(videoId, info, clientIp);
   }
 }
 
