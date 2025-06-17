@@ -1,3 +1,5 @@
+import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
+import { MuxService } from '@/mux/mux.service';
 import {
   Body,
   Controller,
@@ -10,15 +12,13 @@ import {
   Req,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import * as multer from 'multer';
-import { VideoService } from './video.service';
-import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { ApiBearerAuth, ApiHeader, ApiOperation, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Request } from 'express';
-import { MuxService } from '@/mux/mux.service';
+import * as multer from 'multer';
 import { MuxUploadResponseDto, RegisterMuxVideoDto } from './dto/mux.dto';
 import { CreateUserDto, GetMyVideoDto, VideoResponseDto } from './dto/video.dto';
+import { VideoService } from './video.service';
 
 @UseInterceptors(
   FileInterceptor('video', {
@@ -27,12 +27,14 @@ import { CreateUserDto, GetMyVideoDto, VideoResponseDto } from './dto/video.dto'
 )
 @ApiTags('Video')
 @Controller('video')
+@ApiBearerAuth('access-token')
 export class VideoController {
   constructor(
     private readonly videoService: VideoService,
     private readonly muxService: MuxService,
     private readonly authVerifService: AuthVerificationService,
   ) {}
+ 
   @ApiOperation({ summary: '내가 업로드한 영상' })
   @ApiResponse({
     status: 201,
@@ -63,6 +65,11 @@ export class VideoController {
     description: '넘길 개수',
     example: 0,
   })
+  @ApiHeader({
+    name: 'authorization',
+    description: 'Access token in the format: Bearer <token>',
+    required: true,
+  })
   @Get('my')
   async getMyVideos(
     @Headers('authorization') authHeader: string,
@@ -70,8 +77,9 @@ export class VideoController {
     @Query('skip') skip = 0,
     @Query('order') order: 'latest' | 'popular' = 'latest',
   ) {
-    const token = authHeader?.replace('Bearer', '');
+    const token = authHeader?.replace('Bearer', '').trim();
     const user = await this.authVerifService.verifyTokenAndGetUser(token);
+    console.log('유저정보 반환', user)
     return this.videoService.getMyVideos(user, +take, +skip, order);
   }
   @ApiOperation({ summary: '숏츠 영상 무한스크롤 조회' })

@@ -1,10 +1,10 @@
+import { Like, User, Video } from '@/entities';
+import { RedisService } from '@/redis/redis.service';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CreateUserDto } from './dto/video.dto';
-import { Like, User, Video } from '@/entities';
-import { RedisService } from '@/redis/redis.service';
 import { RegisterMuxVideoDto } from './dto/mux.dto';
+import { CreateUserDto } from './dto/video.dto';
 
 
 @Injectable()
@@ -41,16 +41,7 @@ export class VideoService {
   // 사용자가 업로드 후 등록 요청을 보냄
   async registerMuxVideo(info: CreateUserDto, body: RegisterMuxVideoDto) {
     try {
-      // 사용자 확인
-      let user = await this.userRepository.findOne({
-        where: { email: info.email },
-      });
-      // 없으면 생성
-      if (!user) {
-        user = this.userRepository.create(info);
-        await this.userRepository.save(user);
-      }
-
+      const user = await this.findOrCreateUserByInfo(info);
       // db에 저장
       const video = this.videoRepository.create({
         title: body.title,
@@ -81,8 +72,8 @@ export class VideoService {
         .leftJoinAndSelect('video.user', 'user')
         .leftJoinAndSelect('video.comment', 'comment')
         .leftJoinAndSelect('video.like', 'like')
-        .loadRelationCountAndMap('video.likeCount', 'like')
-        .loadRelationCountAndMap('video.commentCount', 'comment')
+        .loadRelationCountAndMap('video.likeCount', 'video.like')
+        .loadRelationCountAndMap('video.commentCount', 'video.comment')
         .take(take)
         .orderBy(
           order === 'popular' ? 'video.viewCount' : 'video.createdAt',
@@ -109,6 +100,7 @@ export class VideoService {
         })),
       };
     } catch (error) {
+      console.error('getVideos Error:', error);
       throw new BadRequestException(
         '영상 목록을 불러오는 중 오류가 발생했습니다.',
       );
@@ -123,10 +115,7 @@ export class VideoService {
     order: 'latest' | 'popular',
   ) {
     try {
-      // 사용자 확인
-      const user = await this.userRepository.findOne({
-        where: { email: info.email },
-      });
+      const user = await this.findOrCreateUserByInfo(info);
       if (!user) {
         return { total: 0, data: [] };
       }
@@ -135,6 +124,7 @@ export class VideoService {
         .where('video.userId = :userId', { userId: user.id })
         .leftJoinAndSelect('video.comment', 'comment')
         .leftJoinAndSelect('video.like', 'like')
+        .leftJoinAndSelect('video.user', 'user')
         .loadRelationCountAndMap('video.likeCount', 'video.like')
         .loadRelationCountAndMap('video.commentCount', 'video.comment')
         .orderBy(
@@ -171,14 +161,8 @@ export class VideoService {
       let userIdForRedis: string;
       if (info.email) {
         // 영상을 본사람들도 댓글 좋아요 쓸수 잇어야하니... 유저 정보에 들어가게 한다.
-        let user = await this.userRepository.findOne({
-          where: { email: info.email },
-        });
-        if (!user) {
-          user = await this.userRepository.create(info);
-          await this.userRepository.save(user);
-          userIdForRedis = user.id;
-        }
+        const user = await this.findOrCreateUserByInfo(info);
+        userIdForRedis = user.id;
       } else if (ip) {
         // 비회원 도 카운트 늘려야되용....
         userIdForRedis = `guest:${ip}`;
@@ -188,9 +172,9 @@ export class VideoService {
 
       const key = `view:${userIdForRedis}:${videoId}`;
       // 뷰카운트 검증
-      const viewd = await this.redisService.existsCount(key);
+      const view = await this.redisService.existsCount(key);
       // 중복 안될때
-      if (!viewd) {
+      if (!view) {
         // 레디스에 정보등록
         await this.redisService.saveCount(key, '1');
         // 비디오 있니?
@@ -214,13 +198,7 @@ export class VideoService {
   // 영상 좋아요
   async toggleLike(videoId: string, info?: CreateUserDto) {
     try {
-      let user = await this.userRepository.findOne({
-        where: { email: info.email },
-      });
-      if (!user) {
-        user = await this.userRepository.create(info);
-        await this.userRepository.save(user);
-      }
+      const user = await this.findOrCreateUserByInfo(info);
       // 영상 있니?
       const videoEx = await this.videoRepository
         .createQueryBuilder('video')
@@ -262,4 +240,21 @@ export class VideoService {
       throw new BadRequestException('좋아요 처리 중 오류가 발생했습니다.');
     }
   }
+
+  // 유저 조회
+  async findOrCreateUserByInfo(info: CreateUserDto): Promise<User> {
+  let user = await this.userRepository.findOne({
+    where: { email: info.email },
+  });
+
+  if (!user) {
+    user = this.userRepository.create({
+      email: info.email,
+      username: info.username
+    });
+    await this.userRepository.save(user);
+  }
+
+  return user;
+}
 }

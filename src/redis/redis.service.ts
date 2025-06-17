@@ -16,7 +16,7 @@ export class RedisService {
   }
   // 조회수용 유저 정보 저장 30분후 자동 삭제...
   async saveCount(key: string, value: string) {
-    await this.client.set(key, value, { EX: 1800 });
+    await this.client.set(key, value, { EX: 60 * 60 * 24 });
   }
   // 키가 있누?
   async existsCount(key: string): Promise<boolean> {
