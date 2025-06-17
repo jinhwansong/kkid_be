@@ -1,12 +1,12 @@
+import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
+import { Like, User, Video } from '@/entities';
+import { MuxService } from '@/mux/mux.service';
+import { RedisService } from '@/redis/redis.service';
+import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { HttpModule } from '@nestjs/axios';
-import { User, Video, Like } from '@/entities';
 import { VideoController } from './video.controller';
 import { VideoService } from './video.service';
-import { RedisService } from '@/redis/redis.service';
-import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
-import { MuxService } from '@/mux/mux.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Video, User, Like]), HttpModule],

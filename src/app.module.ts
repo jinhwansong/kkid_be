@@ -1,20 +1,18 @@
+import { HttpModule } from '@nestjs/axios';
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { HttpModule } from '@nestjs/axios';
-import { DataSource } from 'typeorm';
 import { join } from 'path';
+import { DataSource } from 'typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthVerificationService } from './auth-verification/auth-verification.service';
-import { VideoController } from './video/video.controller';
-import { VideoModule } from './video/video.module';
-import { CommentController } from './comment/comment.controller';
 import { CommentModule } from './comment/comment.module';
-import { RedisModule } from './redis/redis.module';
+import * as Entities from './entities';
 import { LoggerMiddleware } from './middlewares/logger.middleware';
 import { MuxService } from './mux/mux.service';
-import * as Entities from './entities';
+import { RedisModule } from './redis/redis.module';
+import { VideoModule } from './video/video.module';
 
 @Module({
   imports: [
@@ -52,7 +50,7 @@ import * as Entities from './entities';
     RedisModule,
     HttpModule,
   ],
-  controllers: [AppController, VideoController, CommentController],
+  controllers: [AppController],
   providers: [AppService, AuthVerificationService, MuxService],
 })
 export class AppModule implements NestModule {

@@ -1,11 +1,11 @@
-import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
 
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { HttpExceptionFilter } from './httpException.fliter';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import dotenv from 'dotenv';
 import { AppModule } from './app.module';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { HttpExceptionFilter } from './httpException.fliter';
 
 declare const module: NodeJS.Module & {
   hot?: {
@@ -35,9 +35,11 @@ async function bootstrap() {
         type: 'http',
         scheme: 'bearer',
         bearerFormat: 'JWT',
-        description: 'JWT Bearer Token',
+        name: 'Authorization',
+        description: 'JWT access token',
+        in: 'header',
       },
-      'access-token',
+      'access-token', 
     )
     .build();
   const document = SwaggerModule.createDocument(app, config);

@@ -6,9 +6,9 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Video } from './video.entity';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
+import { Video } from './video.entity';
 
 @Entity({ schema: 'Jimmit', name: 'user' })
 export class User {
@@ -28,6 +28,20 @@ export class User {
     nullable: false,
   })
   username: string;
+  @Column({
+    type: 'varchar',
+    length: 30,
+    unique: true,
+    nullable: false,
+  })
+  nickname: string;
+  @Column({
+    type: 'varchar',
+    length: 30,
+    unique: true,
+    nullable: false,
+  })
+  userId: number;
   @CreateDateColumn()
   createdAt: Date;
   @UpdateDateColumn()

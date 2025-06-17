@@ -1,10 +1,10 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { ConfigService } from '@nestjs/config';
-import { Repository } from 'typeorm';
-import Mux from '@mux/mux-node';
 import { User } from '@/entities';
 import { CreateUserDto } from '@/video/dto/video.dto';
+import Mux from '@mux/mux-node';
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 
 
 @Injectable()
@@ -37,7 +37,12 @@ export class MuxService {
       });
       // 없으면 생성
       if (!user) {
-        user = await this.userRepository.create(info);
+        user = await this.userRepository.create({
+          email: info.email,
+          username: info.username,
+          nickname:info.nickname,
+          userId:info.id
+        });
         await this.userRepository.save(user);
       }
       // 업로드

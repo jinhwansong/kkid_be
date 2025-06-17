@@ -13,11 +13,11 @@ export class AuthVerificationService {
     const backUrl = this.configService.get<string>('SPRING_VERIFY_API');
     try {
       const { data } = await firstValueFrom(this.httpService.get(backUrl,{
-        headers: {Authorization: `Bearer ${token}`}
+        headers: {Authorization: `Bearer ${token.trim()}`}
       }));
       return data
     } catch (error) {
-      throw new UnauthorizedException('유효하지 않은 토큰');
+      throw new UnauthorizedException('인증되지 않은 사용자');
     }
   }
 }

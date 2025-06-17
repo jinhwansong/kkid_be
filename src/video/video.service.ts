@@ -18,8 +18,144 @@ export class VideoService {
     private readonly likeRepository: Repository<Like>,
     private readonly redisService: RedisService,
   ) {}
+   // 전체 영상 목록 리스트
+  async getVideosWithPagination(
+    take: number = 10,
+    skip: number = 0,
+    order: 'latest' | 'popular',
+  ) {
+    try {
+      const video = this.videoRepository
+        .createQueryBuilder('video')
+        .leftJoinAndSelect('video.user', 'user')
+        .select([
+          'video.id AS id',
+          'video.title AS title',
+          'video.thumbnailUrl AS thumbnailUrl',
+          'user.nickname AS nickname',
+          'video.createdAt AS createdAt',
+        ])
+        .orderBy(order === 'latest' ? 'video.createdAt' : 'video.viewCount', 'DESC')
+        .take(take)
+        .skip(skip)
+      const rawVideos = await video.getRawMany();
+      const total = await this.videoRepository
+        .createQueryBuilder('video')
+        .getCount();
+      return {
+        page: Math.floor(skip / take) + 1,
+        take,
+        total,
+        totalPages: Math.ceil(total / take),
+        data: rawVideos,
+      };
+    } catch (error) {
+      throw new BadRequestException(
+        '영상 목록을 불러오는 중 오류가 발생했습니다.',
+      );
+
+    }
+  }
+  // 내가 올린 영상목록
+  async getMyVideos (
+    userInfo: number,
+    take: number = 10,
+    skip: number = 0,
+    order: 'latest' | 'popular') {
+      try {
+        const user = await this.userRepository.findOneBy({ userId: userInfo });
+        if (!user) {
+          return {
+            page: Math.floor(skip / take) + 1,
+            take,
+            total: 0,
+            totalPages: 0,
+            data: [],
+          };
+        }
+        const video = this.videoRepository
+          .createQueryBuilder('video')
+          .leftJoinAndSelect('video.user', 'user')
+          .where('video.userId  = :id ', { id: user.id  })
+          .select([
+            'video.id AS id',
+            'video.title AS title',
+            'video.thumbnailUrl AS thumbnailUrl',
+            'user.nickname AS nickname',
+            'video.createdAt AS createdAt',
+          ])
+          .orderBy(order === 'latest' ? 'video.createdAt' : 'video.viewCount', 'DESC')
+          .take(take)
+          .skip(skip)
+          const rawVideos = await video.getRawMany();
+          const total = await this.videoRepository
+            .createQueryBuilder('video')
+            .getCount();
+          console.log(video)
+        return {
+          page: Math.floor(skip / take) + 1,
+          take,
+          total,
+          totalPages: Math.ceil(total / take),
+          data:rawVideos,
+        };
+      } catch (error) {
+        throw new BadRequestException(
+          '영상 목록을 불러오는 중 오류가 발생했습니다.',
+        );
+
+      }
+  }
+  // 영상 목록 상세
+  async getVideosWithDetail(videoId: string) {
+    try {
+      const video = await this.videoRepository
+      .createQueryBuilder('video')
+      .leftJoinAndSelect('video.user', 'user')
+      .select([
+        'video.id AS id',
+        'video.title AS title',
+        'video.viewCount AS viewCount',
+        'video.description AS description',
+        'video.videoUrl AS videoUrl',
+        'user.nickname AS nickname',
+        'user.username AS username',
+        'user.userId AS userId',
+      ])
+      .addSelect((subQuery) =>
+        subQuery
+          .select('COUNT(*)')
+          .from('like', 'l')
+          .where('l.videoId = video.id'),
+        'likeCount',
+      )
+      .where('video.id = :videoId', { videoId })
+      .getRawOne();
+      if (!video) {
+        throw new NotFoundException('해당 영상이 존재하지 않습니다.');
+      }
+      return {
+         id: video.id,
+        title: video.title,
+        description: video.description,
+        videoUrl: video.videoUrl,
+        viewCount: Number(video.viewCount),
+        likeCount: Number(video.likeCount),
+        nickname: video.nickname,
+        username: video.username,
+        userId: video.userId,
+      }
+
+
+    } catch (error) {
+      throw new BadRequestException(
+        '영상 상세데이터를 불러오는 중 오류가 발생했습니다.',
+      );
+    }
+  }
   // 웹훅
   async muxWebHook(payload: any) {
+    console.log('페이로드',payload)
     if (payload.type === 'video.asset.ready') {
       const asset = payload.data;
       const playbackId = asset.playback_ids?.[0]?.id;
@@ -29,6 +165,8 @@ export class VideoService {
       const video = await this.videoRepository.findOne({
         where: { uploadId },
       });
+      console.log('썸네일', thumbnailUrl)
+      console.log('플레이백', playbackUrl)
       if (video) {
         video.playbackId = playbackId;
         video.thumbnailUrl = thumbnailUrl;
@@ -58,101 +196,6 @@ export class VideoService {
         '영상 등록 중 오류가 발생했습니다.',
       );
 
-    }
-  }
-  // 전체 영상 목록
-  async getVideos(
-    take: number,
-    lastCreatedAt?: Date,
-    order: 'latest' | 'popular' = 'latest',
-  ) {
-    try {
-      const query = this.videoRepository
-        .createQueryBuilder('video')
-        .leftJoinAndSelect('video.user', 'user')
-        .leftJoinAndSelect('video.comment', 'comment')
-        .leftJoinAndSelect('video.like', 'like')
-        .loadRelationCountAndMap('video.likeCount', 'video.like')
-        .loadRelationCountAndMap('video.commentCount', 'video.comment')
-        .take(take)
-        .orderBy(
-          order === 'popular' ? 'video.viewCount' : 'video.createdAt',
-          'DESC',
-        );
-      if (lastCreatedAt && order === 'latest') {
-        query.where('video.createdAt < :lastCreatedAt', { lastCreatedAt });
-      }
-      const videos = await query.getMany();
-      return {
-        nextCursor:
-          videos.length > 0 ? videos[videos.length - 1].createdAt : null,
-        data: videos.map((item) => ({
-          id: item.id,
-          title: item.title,
-          description: item.description,
-          videoUrl: item.videoUrl,
-          thumbnailUrl: item.thumbnailUrl,
-          viewCount: item.viewCount,
-          updatedAt: item.updatedAt,
-          likeCount: (item as any).likeCount ?? item.like?.length ?? 0,
-          commentCount: (item as any).commentCount ?? item.comment?.length ?? 0,
-          username: item.user.username,
-        })),
-      };
-    } catch (error) {
-      console.error('getVideos Error:', error);
-      throw new BadRequestException(
-        '영상 목록을 불러오는 중 오류가 발생했습니다.',
-      );
-
-    }
-  }
-  // 내가 올린 영상목록
-  async getMyVideos(
-    info: CreateUserDto,
-    take: number,
-    skip: number,
-    order: 'latest' | 'popular',
-  ) {
-    try {
-      const user = await this.findOrCreateUserByInfo(info);
-      if (!user) {
-        return { total: 0, data: [] };
-      }
-      const query = this.videoRepository
-        .createQueryBuilder('video')
-        .where('video.userId = :userId', { userId: user.id })
-        .leftJoinAndSelect('video.comment', 'comment')
-        .leftJoinAndSelect('video.like', 'like')
-        .leftJoinAndSelect('video.user', 'user')
-        .loadRelationCountAndMap('video.likeCount', 'video.like')
-        .loadRelationCountAndMap('video.commentCount', 'video.comment')
-        .orderBy(
-          order === 'popular' ? 'video.viewCount' : 'video.createdAt',
-          'DESC',
-        )
-        .skip(skip)
-        .take(take);
-      const [videos, total] = await query.getManyAndCount();
-      return {
-        total,
-        data: videos.map((v) => ({
-          id: v.id,
-          title: v.title,
-          description: v.description,
-          videoUrl: v.videoUrl,
-          thumbnailUrl: v.thumbnailUrl,
-          viewCount: v.viewCount,
-          updatedAt: v.updatedAt,
-          likeCount: (v as any).likeCount ?? v.like?.length ?? 0,
-          commentCount: (v as any).commentCount ?? v.comment?.length ?? 0,
-          username: v.user.username,
-        })),
-      };
-    } catch (error) {
-      throw new BadRequestException(
-        '영상 목록을 불러오는 중 오류가 발생했습니다.',
-      );
     }
   }
   // 뷰 카운트
@@ -202,7 +245,7 @@ export class VideoService {
       // 영상 있니?
       const videoEx = await this.videoRepository
         .createQueryBuilder('video')
-        .where('video.id = :video', { videoId })
+        .where('video.id = :video', { video: videoId })
         .getExists();
       if (!videoEx) {
         throw new NotFoundException('존재하지 않는 영상입니다.');
@@ -221,7 +264,7 @@ export class VideoService {
         await this.likeRepository
           .createQueryBuilder()
           .insert()
-          .into('likes')
+          .into('like')
           .values({ user: { id: user.id }, video: { id: videoId } })
           .execute();
       }
@@ -240,21 +283,22 @@ export class VideoService {
       throw new BadRequestException('좋아요 처리 중 오류가 발생했습니다.');
     }
   }
-
+  
   // 유저 조회
   async findOrCreateUserByInfo(info: CreateUserDto): Promise<User> {
-  let user = await this.userRepository.findOne({
-    where: { email: info.email },
-  });
-
-  if (!user) {
-    user = this.userRepository.create({
-      email: info.email,
-      username: info.username
+    let user = await this.userRepository.findOne({
+      where: { email: info.email },
     });
-    await this.userRepository.save(user);
-  }
+    if (!user) {
+      user = this.userRepository.create({
+        email: info.email,
+        username: info.username,
+        nickname:info.nickname,
+        userId:info.id
+      });
+      await this.userRepository.save(user);
+    }
 
-  return user;
-}
+    return user;
+  }
 }
