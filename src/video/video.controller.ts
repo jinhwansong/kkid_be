@@ -10,6 +10,7 @@ import {
   Post,
   Query,
   Req,
+  Res,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -193,8 +194,8 @@ export class VideoController {
   @ApiOperation({ summary: '웹훅' })
   @Post('webhook/mux')
   @HttpCode(200)
-  async muxWebHook(@Body() payload: any) {
-    return this.videoService.muxWebHook(payload);
+  async muxWebHook(@Req() req: Request, @Res() res: Response) {
+    return this.videoService.muxWebHook(req, res);
   }
   @ApiOperation({ summary: '조회수 증가' })
   @ApiParam({ name: 'videoId', type: String, description: '조회수 증가시킬 비디오 ID' })

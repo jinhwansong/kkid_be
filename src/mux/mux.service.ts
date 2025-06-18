@@ -56,7 +56,7 @@ export class MuxService {
         new_asset_settings: {
           playback_policy: ['public'],
         },
-        cors_origin: process.env.FRONTEND_URL,
+        cors_origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL_NEXT : process.env.FRONTEND_URL,
       });
       return { uploadUrl: upload.url, uploadId: upload.id };
     } catch (error) {

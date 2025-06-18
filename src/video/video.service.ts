@@ -3,10 +3,10 @@ import { RedisService } from '@/redis/redis.service';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as Sentry from '@sentry/node';
+import * as crypto from 'crypto';
 import { Repository } from 'typeorm';
 import { RegisterMuxVideoDto } from './dto/mux.dto';
 import { CreateUserDto } from './dto/video.dto';
-
 
 @Injectable()
 export class VideoService {
@@ -98,7 +98,6 @@ export class VideoService {
           const total = await this.videoRepository
             .createQueryBuilder('video')
             .getCount();
-          console.log(video)
         return {
           page: Math.floor(skip / take) + 1,
           take,
@@ -177,7 +176,33 @@ export class VideoService {
     }
   }
   // 웹훅
-  async muxWebHook(payload: any) {
+  async muxWebHook(req, res) {
+    const secret = process.env.NODE_ENV === 'production' ? process.env.MUX_WEBHOOK_SECRET_NEST : process.env.MUX_WEBHOOK_SECRET;
+    const signature = req.headers['mux-signature'] as string;
+    const rawBody = (req as any).rawBody;
+
+    // 서명 검증 로직
+    const expected = crypto
+      .createHmac('sha256', secret)
+      .update(rawBody)
+      .digest('hex');
+
+    const isValid = signature?.includes(expected);
+    if (!isValid) {
+  Sentry.captureMessage('MUX Webhook Signature Invalid', {
+    level: 'warning',
+    extra: {
+      receivedSignature: signature,
+      expectedHash: expected,
+      eventHeaders: req.headers,
+    },
+  });
+
+  return res.status(403).send('Invalid signature');
+}
+
+    const payload = JSON.parse(rawBody.toString());
+
     if (payload.type === 'video.asset.ready') {
       const asset = payload.data;
       const playbackId = asset.playback_ids?.[0]?.id;
