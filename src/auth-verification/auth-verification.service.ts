@@ -22,7 +22,7 @@ export class AuthVerificationService {
         scope.setTag('method', 'verifyTokenAndGetUser');
         scope.setExtra('token', token);
         scope.setContext('인증 실패', {
-          이유: 'Spring 서버에서 토큰 인증 실패',
+          이유: 'Spring 서버에서 토큰 인증 실패ㅠㅠ',
           URL: backUrl,
         });
         Sentry.captureException(error);
