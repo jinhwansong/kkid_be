@@ -4,8 +4,8 @@ import Mux from '@mux/mux-node';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as Sentry from '@sentry/node';
 import { Repository } from 'typeorm';
-
 
 @Injectable()
 export class MuxService {
@@ -21,8 +21,14 @@ export class MuxService {
       const tokenSecret = this.configService.get<string>('MUX_SECRET_KEY');
       this.mux = new Mux({ tokenId, tokenSecret });
       this.video = this.mux.video;
-    } catch (err) {
-      console.error('⚠️ Mux 초기화 실패:', err);
+    } catch (error) {
+      Sentry.withScope((scope) => {
+      scope.setTag('task', 'mux-init');
+      scope.setContext('Mux 초기화 실패', {
+        이유: '환경 변수 누락 또는 잘못된 토큰',
+      });
+      Sentry.captureException(error);
+      });
     }
   }
   // direct upload용 URL 발급
@@ -54,6 +60,15 @@ export class MuxService {
       });
       return { uploadUrl: upload.url, uploadId: upload.id };
     } catch (error) {
+       Sentry.withScope((scope) => {
+        scope.setTag('task', 'video-upload');
+        scope.setExtra('nickname', info.nickname);
+        scope.setContext('업로드 URL 생성 실패', {
+          이유: 'Mux API 응답 실패',
+          사용자: info.email,
+        });
+        Sentry.captureException(error);
+      });
       throw new Error('업로드 URL을 생성하는 데 실패했습니다.');
     }
   }

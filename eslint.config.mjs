@@ -1,10 +1,10 @@
 // @ts-check
-import eslint from '@eslint/js';
-import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
-import globals from 'globals';
-import tseslint from 'typescript-eslint';
+im eslint from '@eslint/js';
+im eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended';
+im globals from 'globals';
+im tseslint from 'typescript-eslint';
 
-export default tseslint.config(
+ex default tseslint.config(
   {
     ignores: ['eslint.config.mjs'],
   },
@@ -20,7 +20,7 @@ export default tseslint.config(
       sourceType: 'commonjs',
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: im.meta.dirname,
       },
     },
   },

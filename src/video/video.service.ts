@@ -2,6 +2,7 @@ import { Like, User, Video } from '@/entities';
 import { RedisService } from '@/redis/redis.service';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import * as Sentry from '@sentry/node';
 import { Repository } from 'typeorm';
 import { RegisterMuxVideoDto } from './dto/mux.dto';
 import { CreateUserDto } from './dto/video.dto';
@@ -50,9 +51,15 @@ export class VideoService {
         data: rawVideos,
       };
     } catch (error) {
-      throw new BadRequestException(
-        '영상 목록을 불러오는 중 오류가 발생했습니다.',
-      );
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'getVideosWithPagination');
+        scope.setExtra('params', { take, skip, order });
+        scope.setContext('영상 목록 에러', {
+          메시지: '영상 목록을 불러오는 중 오류가 발생했습니다.',
+        });
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException('영상 목록을 불러오는 중 오류가 발생했습니다.');
 
     }
   }
@@ -100,6 +107,14 @@ export class VideoService {
           data:rawVideos,
         };
       } catch (error) {
+        Sentry.withScope((scope) => {
+          scope.setTag('method', 'getMyVideos');
+          scope.setExtra('userId', userInfo);
+          scope.setContext('내 영상 목록 에러', {
+            메시지: '내가 업로드한 영상 목록을 불러오는 중 오류',
+          });
+          Sentry.captureException(error);
+        });
         throw new BadRequestException(
           '영상 목록을 불러오는 중 오류가 발생했습니다.',
         );
@@ -148,6 +163,14 @@ export class VideoService {
 
 
     } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'getVideosWithDetail');
+        scope.setExtra('videoId', videoId);
+        scope.setContext('상세 영상 에러', {
+          메시지: '영상 상세를 불러오는 중 오류',
+        });
+        Sentry.captureException(error);
+      });
       throw new BadRequestException(
         '영상 상세데이터를 불러오는 중 오류가 발생했습니다.',
       );
@@ -155,7 +178,6 @@ export class VideoService {
   }
   // 웹훅
   async muxWebHook(payload: any) {
-    console.log('페이로드',payload)
     if (payload.type === 'video.asset.ready') {
       const asset = payload.data;
       const playbackId = asset.playback_ids?.[0]?.id;
@@ -165,8 +187,6 @@ export class VideoService {
       const video = await this.videoRepository.findOne({
         where: { uploadId },
       });
-      console.log('썸네일', thumbnailUrl)
-      console.log('플레이백', playbackUrl)
       if (video) {
         video.playbackId = playbackId;
         video.thumbnailUrl = thumbnailUrl;
@@ -176,6 +196,7 @@ export class VideoService {
     }
     return { received: true };
   }
+
   // 사용자가 업로드 후 등록 요청을 보냄
   async registerMuxVideo(info: CreateUserDto, body: RegisterMuxVideoDto) {
     try {
@@ -192,6 +213,14 @@ export class VideoService {
         message: '영상 등록 완료',
       };
     } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'registerMuxVideo');
+        scope.setExtra('user', info.email);
+        scope.setContext('Mux 등록 에러', {
+          메시지: '영상 등록 중 오류',
+        });
+        Sentry.captureException(error);
+      });
       throw new InternalServerErrorException(
         '영상 등록 중 오류가 발생했습니다.',
       );
@@ -235,6 +264,14 @@ export class VideoService {
         viewCount: video.viewCount,
       };
     } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'viewCountVideos');
+        scope.setExtra('videoId', videoId);
+        scope.setContext('조회수 처리 에러', {
+          메시지: '조회수 처리 중 오류 발생',
+        });
+        Sentry.captureException(error);
+      });
       throw new BadRequestException('조회수 처리 중 오류가 발생했습니다.');
     }
   }
@@ -280,6 +317,14 @@ export class VideoService {
         likeCount: Number(likeCount),
       };
     } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'toggleLike');
+        scope.setExtra('videoId', videoId);
+        scope.setContext('좋아요 에러', {
+          메시지: '좋아요 처리 중 오류 발생',
+        });
+        Sentry.captureException(error);
+      });
       throw new BadRequestException('좋아요 처리 중 오류가 발생했습니다.');
     }
   }
