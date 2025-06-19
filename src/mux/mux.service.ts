@@ -60,7 +60,7 @@ export class MuxService {
       });
       return { uploadUrl: upload.url, uploadId: upload.id };
     } catch (error) {
-       Sentry.withScope((scope) => {
+        Sentry.withScope((scope) => {
         scope.setTag('task', 'video-upload');
         scope.setExtra('nickname', info.nickname);
         scope.setContext('업로드 URL 생성 실패', {

@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as Sentry from '@sentry/node';
+import * as bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './httpException.fliter';
@@ -23,7 +24,9 @@ Sentry.init({
 
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    bodyParser: false,
+  });
   app.set('trust proxy', 1);
   app.enableCors({
     origin: ['http://localhost:3000'],
@@ -31,6 +34,12 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie', 'Cookie'],
   });
+  app.use(
+    '/video/webhook/mux',
+    bodyParser.raw({ type: 'application/json', limit: '10mb' }),
+  );
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
   // 스웨거 설정
   const config = new DocumentBuilder()
     .setTitle('jammit api문서')

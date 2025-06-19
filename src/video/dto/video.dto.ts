@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsString } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class VideoUploadDto {
   @ApiProperty({
@@ -61,6 +61,12 @@ export class VideoListDto {
   @ApiProperty({ example: '퉁퉁퉁퉁퉁퉁사후르', description: '사용자 닉네임' })
   @IsString()
   nickname: string;
+   @ApiProperty({
+    example: 12.345,
+    description: '비디오 길이(초 단위, 소수점 포함)',
+  })
+  @IsNumber()
+  duration: number;
 }
 
 export class VideoListFlatDto {

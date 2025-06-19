@@ -19,115 +19,7 @@ export class VideoService {
     private readonly likeRepository: Repository<Like>,
     private readonly redisService: RedisService,
   ) {}
-   // 전체 영상 목록 리스트
-  async getVideosWithPagination(
-    limit: number = 10,
-    page: number = 1,
-    order: 'latest' | 'popular',
-  ) {
-    try {
-      const safePage = Math.max(1, page);
-      const skip = Math.max(0, (safePage - 1) * limit);
-
-      const [results, total] = await this.videoRepository
-        .createQueryBuilder('video')
-        .leftJoinAndSelect('video.user', 'user')
-        .orderBy(
-          order === 'latest' ? 'video.createdAt' : 'video.viewCount',
-          'DESC',
-        )
-        .skip(skip)
-        .take(limit)
-        .getManyAndCount();
-
-      const data = results.map(v => ({
-        id: v.id,
-        title: v.title,
-        thumbnailUrl: v.thumbnailUrl,
-        nickname: v.user.nickname,
-        createdAt: v.createdAt,
-        viewCount: v.viewCount,
-      }));
-
-      return {
-        totalPage:  Math.ceil(total / limit),
-        page: Math.floor(skip / limit) + 1,
-        data,
-        message:   '전체 영상 목록을 조회했습니다.',
-      };
-    } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'getVideosWithPagination');
-        scope.setExtra('params', { limit, page, order });
-        scope.setContext('영상 목록 에러', {
-          메시지: '영상 목록을 불러오는 중 오류가 발생했습니다.',
-        });
-        Sentry.captureException(error);
-      });
-      throw new BadRequestException('영상 목록을 불러오는 중 오류가 발생했습니다.');
-
-    }
-  }
-  // 내가 올린 영상목록
-  async getMyVideos (
-    userInfo: number,
-    limit: number = 10,
-    page: number = 1,
-    order: 'latest' | 'popular') {
-      try {
-        const safePage = Math.max(1, page);
-        const skip = Math.max(0, (safePage - 1) * limit);
-        const user = await this.userRepository.findOneBy({ userId: userInfo });
-        if (!user) {
-          return {
-            totalPage: 0,
-            page:0,
-            data:[],
-            message:'유저가 업로드한 영상 목록을 조회했습니다.',
-          };
-        }
-        const [video, total] = await this.videoRepository
-          .createQueryBuilder('video')
-          .leftJoinAndSelect('video.user', 'user')
-          .where('video.userId  = :id ', { id: user.id  })
-          .orderBy(
-            order === 'latest' ? 'video.createdAt' : 'video.viewCount',
-            'DESC',
-          )
-          .skip(skip)
-          .take(limit)
-          .getManyAndCount();
-
-          const data = video.map(v => ({
-            id: v.id,
-            title: v.title,
-            thumbnailUrl: v.thumbnailUrl,
-            nickname: v.user.nickname,
-            createdAt: v.createdAt,
-            viewCount: v.viewCount,
-          }));
-
-        return {
-          totalPage:  Math.ceil(total / limit),
-          page: Math.floor(skip / limit) + 1,
-          data,
-          message:   '전체 영상 목록을 조회했습니다.',
-        };
-      } catch (error) {
-        Sentry.withScope((scope) => {
-          scope.setTag('method', 'getMyVideos');
-          scope.setExtra('userId', userInfo);
-          scope.setContext('내 영상 목록 에러', {
-            메시지: '내가 업로드한 영상 목록을 불러오는 중 오류',
-          });
-          Sentry.captureException(error);
-        });
-        throw new BadRequestException(
-          '영상 목록을 불러오는 중 오류가 발생했습니다.',
-        );
-
-      }
-  }
+   
   // 영상 목록 상세
   async getVideosWithDetail(videoId: string) {
     try {
@@ -141,7 +33,6 @@ export class VideoService {
         'video.description AS description',
         'video.videoUrl AS videoUrl',
         'user.nickname AS nickname',
-        'user.username AS username',
         'user.userId AS userId',
       ])
       .addSelect((subQuery) =>
@@ -157,14 +48,13 @@ export class VideoService {
         throw new NotFoundException('해당 영상이 존재하지 않습니다.');
       }
       return {
-         id: video.id,
+        id: video.id,
         title: video.title,
-        description: video.description,
         videoUrl: video.videoUrl,
         viewCount: Number(video.viewCount),
         likeCount: Number(video.likeCount),
+        description:video.description,
         nickname: video.nickname,
-        username: video.username,
         userId: video.userId,
       }
 
@@ -185,51 +75,60 @@ export class VideoService {
   }
   // 웹훅
   async muxWebHook(req, res) {
-    const secret = process.env.NODE_ENV === 'production' ? process.env.MUX_WEBHOOK_SECRET_NEST : process.env.MUX_WEBHOOK_SECRET;
-    const signature = req.headers['mux-signature'] as string;
-    const rawBody = (req as any).rawBody;
+    const rawBuf: Buffer = req.body;
+    const rawBody = rawBuf.toString('utf8');
 
-    // 서명 검증 로직
+    const signature = req.headers['mux-signature'] as string;
+    if (!signature) return res.status(403).send('Missing signature');
+
+    const [tPart, v1Part] = signature.split(',');
+    const timestamp = tPart.replace('t=', '');
+    const provided = v1Part.replace('v1=', '');
+
+    const secret = process.env.NODE_ENV === 'production'
+      ? process.env.MUX_WEBHOOK_SECRET_NEST
+      : process.env.MUX_WEBHOOK_SECRET;
+    if (!secret) return res.status(500).send('Webhook secret not configured');
+
+    // timestamp+"."+원본바디
     const expected = crypto
       .createHmac('sha256', secret)
-      .update(rawBody)
+      .update(`${timestamp}.${rawBody}`, 'utf8')
       .digest('hex');
 
-    const isValid = signature?.includes(expected);
+    const isValid = expected.length === provided.length
+      && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
+
     if (!isValid) {
-  Sentry.captureMessage('MUX Webhook Signature Invalid', {
-    level: 'warning',
-    extra: {
-      receivedSignature: signature,
-      expectedHash: expected,
-      eventHeaders: req.headers,
-    },
-  });
+      Sentry.captureMessage('MUX Webhook Signature Invalid', { level: 'warning' });
+      return res.status(403).send('Invalid signature');
+    }
 
-  return res.status(403).send('Invalid signature');
-}
-
-    const payload = JSON.parse(rawBody.toString());
+    // 검증 통과 후 JSON 파싱
+    const payload = JSON.parse(rawBody);
 
     if (payload.type === 'video.asset.ready') {
       const asset = payload.data;
-      const playbackId = asset.playback_ids?.[0]?.id;
+      const playbackId = asset.playbook_ids?.[0]?.id;
       const uploadId = asset.upload_id;
+
       const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg`;
       const playbackUrl = `https://stream.mux.com/${playbackId}.m3u8`;
       const video = await this.videoRepository.findOne({
         where: { uploadId },
       });
+      const duration = Math.floor(asset.duration)
       if (video) {
         video.playbackId = playbackId;
         video.thumbnailUrl = thumbnailUrl;
         video.videoUrl = playbackUrl;
+        video.duration = duration
         await this.videoRepository.save(video);
       }
     }
-    return { received: true };
+    return res.status(200).json({ received: true });
   }
-
+  
   // 사용자가 업로드 후 등록 요청을 보냄
   async registerMuxVideo(info: CreateUserDto, body: RegisterMuxVideoDto) {
     try {
@@ -260,6 +159,7 @@ export class VideoService {
 
     }
   }
+
   // 뷰 카운트
   async viewCountVideos(videoId: string, info?: CreateUserDto, ip?: string) {
     try {
@@ -378,5 +278,116 @@ export class VideoService {
     }
 
     return user;
+  }
+  // 전체 영상 목록 리스트
+  async getVideosWithPagination(
+    limit: number = 10,
+    page: number = 1,
+    order: 'latest' | 'popular',
+  ) {
+    try {
+      const safePage = Math.max(1, page);
+      const skip = Math.max(0, (safePage - 1) * limit);
+
+      const [results, total] = await this.videoRepository
+        .createQueryBuilder('video')
+        .leftJoinAndSelect('video.user', 'user')
+        .orderBy(
+          order === 'latest' ? 'video.createdAt' : 'video.viewCount',
+          'DESC',
+        )
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+
+      const data = results.map(v => ({
+        id: v.id,
+        title: v.title,
+        thumbnailUrl: v.thumbnailUrl,
+        nickname: v.user.nickname,
+        createdAt: v.createdAt,
+        viewCount: v.viewCount,
+        duration: v.duration
+      }));
+
+      return {
+        totalPage:  Math.ceil(total / limit),
+        page: Math.floor(skip / limit) + 1,
+        data,
+        message:   '전체 영상 목록을 조회했습니다.',
+      };
+    } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'getVideosWithPagination');
+        scope.setExtra('params', { limit, page, order });
+        scope.setContext('영상 목록 에러', {
+          메시지: '영상 목록을 불러오는 중 오류가 발생했습니다.',
+        });
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException('영상 목록을 불러오는 중 오류가 발생했습니다.');
+
+    }
+  }
+  // 내가 올린 영상목록
+  async getMyVideos (
+    userInfo: number,
+    limit: number = 10,
+    page: number = 1,
+    order: 'latest' | 'popular') {
+      try {
+        const safePage = Math.max(1, page);
+        const skip = Math.max(0, (safePage - 1) * limit);
+        const user = await this.userRepository.findOneBy({ userId: userInfo });
+        if (!user) {
+          return {
+            totalPage: 0,
+            page:0,
+            data:[],
+            message:'유저가 업로드한 영상 목록을 조회했습니다.',
+          };
+        }
+        const [video, total] = await this.videoRepository
+          .createQueryBuilder('video')
+          .leftJoinAndSelect('video.user', 'user')
+          .where('video.userId  = :id ', { id: user.id  })
+          .orderBy(
+            order === 'latest' ? 'video.createdAt' : 'video.viewCount',
+            'DESC',
+          )
+          .skip(skip)
+          .take(limit)
+          .getManyAndCount();
+
+          const data = video.map(v => ({
+            id: v.id,
+            title: v.title,
+            thumbnailUrl: v.thumbnailUrl,
+            nickname: v.user.nickname,
+            createdAt: v.createdAt,
+            viewCount: v.viewCount,
+            duration: v.duration
+          }));
+
+        return {
+          totalPage:  Math.ceil(total / limit),
+          page: Math.floor(skip / limit) + 1,
+          data,
+          message:   '전체 영상 목록을 조회했습니다.',
+        };
+      } catch (error) {
+        Sentry.withScope((scope) => {
+          scope.setTag('method', 'getMyVideos');
+          scope.setExtra('userId', userInfo);
+          scope.setContext('내 영상 목록 에러', {
+            메시지: '내가 업로드한 영상 목록을 불러오는 중 오류',
+          });
+          Sentry.captureException(error);
+        });
+        throw new BadRequestException(
+          '영상 목록을 불러오는 중 오류가 발생했습니다.',
+        );
+
+      }
   }
 }
