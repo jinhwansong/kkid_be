@@ -59,10 +59,10 @@ export class VideoController {
     const skip = (page - 1) * take;
     return this.videoService.getVideosWithPagination(take, skip, order);
   }
-  @ApiOperation({ summary: '내가 업로드한 영상 목록' })
+  @ApiOperation({ summary: '유저가 업로드한 영상 목록' })
   @ApiResponse({
     status: 200,
-    description: '내가 업로드한 영상 목록 리스트입니다.',
+    description: '유저가 업로드한 영상 목록 리스트입니다.',
     type: VideoListFlatDto,
   })
   @ApiResponse({
@@ -88,8 +88,8 @@ export class VideoController {
   async getMyVideos(
     @Headers('authorization') authHeader: string,
     @Query('userId') userId: string,
-    @Query('page') page = 1,
-    @Query('take') take = 10,
+    @Query('page',  ParseIntPipe) page:number,
+    @Query('take',  ParseIntPipe) take:number,
     @Query('order') order: 'latest' | 'popular' = 'latest',
   ) {
     const token = authHeader?.replace('Bearer', '');
