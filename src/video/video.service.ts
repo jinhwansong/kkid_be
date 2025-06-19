@@ -21,49 +21,44 @@ export class VideoService {
   ) {}
    // 전체 영상 목록 리스트
   async getVideosWithPagination(
-    take: number = 10,
-    skip: number = 0,
+    limit: number = 10,
+    page: number = 1,
     order: 'latest' | 'popular',
   ) {
     try {
-      const video = await this.videoRepository
+      const safePage = Math.max(1, page);
+      const skip = Math.max(0, (safePage - 1) * limit);
+
+      const [results, total] = await this.videoRepository
         .createQueryBuilder('video')
         .leftJoinAndSelect('video.user', 'user')
-        .select([
-          'video.id AS id',
-          'video.title AS title',
-          'video.thumbnailUrl AS thumbnailUrl',
-          'user.nickname AS nickname',
-          'video.createdAt AS createdAt',
-        ])
-        .orderBy(order === 'latest' ? 'video.createdAt' : 'video.viewCount', 'DESC')
-        
-      // 전체 개수 조회
-      const total = await video.getCount();
-    
-      // 페이지네이션 적용한 데이터 조회
-     const videos = await video
-      .offset(skip)
-      .limit(take)
-      .getMany();
-      const data = videos.map(v => ({
+        .orderBy(
+          order === 'latest' ? 'video.createdAt' : 'video.viewCount',
+          'DESC',
+        )
+        .skip(skip)
+        .take(limit)
+        .getManyAndCount();
+
+      const data = results.map(v => ({
         id: v.id,
         title: v.title,
         thumbnailUrl: v.thumbnailUrl,
         nickname: v.user.nickname,
         createdAt: v.createdAt,
+        viewCount: v.viewCount,
       }));
+
       return {
-        page: Math.floor(skip / take) + 1,
-        take,
-        total,
-        totalPages: Math.ceil(total / take),
+        totalPage:  Math.ceil(total / limit),
+        page: Math.floor(skip / limit) + 1,
         data,
+        message:   '전체 영상 목록을 조회했습니다.',
       };
     } catch (error) {
       Sentry.withScope((scope) => {
         scope.setTag('method', 'getVideosWithPagination');
-        scope.setExtra('params', { take, skip, order });
+        scope.setExtra('params', { limit, page, order });
         scope.setContext('영상 목록 에러', {
           메시지: '영상 목록을 불러오는 중 오류가 발생했습니다.',
         });
@@ -76,53 +71,47 @@ export class VideoService {
   // 내가 올린 영상목록
   async getMyVideos (
     userInfo: number,
-    take: number = 10,
-    skip: number = 0,
+    limit: number = 10,
+    page: number = 1,
     order: 'latest' | 'popular') {
       try {
+        const safePage = Math.max(1, page);
+        const skip = Math.max(0, (safePage - 1) * limit);
         const user = await this.userRepository.findOneBy({ userId: userInfo });
         if (!user) {
           return {
-            page: Math.floor(skip / take) + 1,
-            take,
-            total: 0,
-            totalPages: 0,
-            data: [],
+            totalPage: 0,
+            page:0,
+            data:[],
+            message:'유저가 업로드한 영상 목록을 조회했습니다.',
           };
         }
-        const video = this.videoRepository
+        const [video, total] = await this.videoRepository
           .createQueryBuilder('video')
           .leftJoinAndSelect('video.user', 'user')
           .where('video.userId  = :id ', { id: user.id  })
-          .select([
-            'video.id AS id',
-            'video.title AS title',
-            'video.thumbnailUrl AS thumbnailUrl',
-            'user.nickname AS nickname',
-            'video.createdAt AS createdAt',
-          ])
-          .orderBy(order === 'latest' ? 'video.createdAt' : 'video.viewCount', 'DESC')
-         // 전체 개수 조회
-        const total = await video.getCount();
-      
-        // 페이지네이션 적용한 데이터 조회
-        const videos = await video
-          .offset(skip)
-          .limit(take)
-          .getMany();
-          const data = videos.map(v => ({
+          .orderBy(
+            order === 'latest' ? 'video.createdAt' : 'video.viewCount',
+            'DESC',
+          )
+          .skip(skip)
+          .take(limit)
+          .getManyAndCount();
+
+          const data = video.map(v => ({
             id: v.id,
             title: v.title,
             thumbnailUrl: v.thumbnailUrl,
             nickname: v.user.nickname,
             createdAt: v.createdAt,
+            viewCount: v.viewCount,
           }));
+
         return {
-          page: Math.floor(skip / take) + 1,
-          take,
-          total,
-          totalPages: Math.ceil(total / take),
+          totalPage:  Math.ceil(total / limit),
+          page: Math.floor(skip / limit) + 1,
           data,
+          message:   '전체 영상 목록을 조회했습니다.',
         };
       } catch (error) {
         Sentry.withScope((scope) => {

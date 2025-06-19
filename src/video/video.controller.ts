@@ -56,8 +56,7 @@ export class VideoController {
     @Query('take',  ParseIntPipe) take:number,
     @Query('order') order: 'latest' | 'popular',
   ) {
-    const skip = (page - 1) * take;
-    return this.videoService.getVideosWithPagination(take, skip, order);
+    return this.videoService.getVideosWithPagination(take, page, order);
   }
   @ApiOperation({ summary: '유저가 업로드한 영상 목록' })
   @ApiResponse({
