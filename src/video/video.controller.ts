@@ -7,6 +7,7 @@ import {
   Headers,
   HttpCode,
   Param,
+  ParseIntPipe,
   Post,
   Query,
   Req,
@@ -51,9 +52,9 @@ export class VideoController {
   @ApiQuery({ name: 'order', required: false, enum: ['latest', 'popular'], example: 'latest' })
   @Get('')
   async getVideosWithPagination(
-    @Query('page') page = 1,
-    @Query('take') take = 10,
-    @Query('order') order: 'latest' | 'popular' = 'latest',
+    @Query('page',  ParseIntPipe) page,
+    @Query('take',  ParseIntPipe) take,
+    @Query('order') order: 'latest' | 'popular',
   ) {
     const skip = (page - 1) * take;
     return this.videoService.getVideosWithPagination(take, skip, order);

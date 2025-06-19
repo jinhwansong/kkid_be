@@ -26,7 +26,7 @@ export class VideoService {
     order: 'latest' | 'popular',
   ) {
     try {
-      const video = this.videoRepository
+      const [videos, total] = await this.videoRepository
         .createQueryBuilder('video')
         .leftJoinAndSelect('video.user', 'user')
         .select([
@@ -37,18 +37,22 @@ export class VideoService {
           'video.createdAt AS createdAt',
         ])
         .orderBy(order === 'latest' ? 'video.createdAt' : 'video.viewCount', 'DESC')
-        .take(take)
-        .skip(skip)
-      const rawVideos = await video.getRawMany();
-      const total = await this.videoRepository
-        .createQueryBuilder('video')
-        .getCount();
+        .offset(skip)  
+        .limit(take)   
+        .getManyAndCount();  
+      const data = videos.map(v => ({
+        id: v.id,
+        title: v.title,
+        thumbnailUrl: v.thumbnailUrl,
+        nickname: v.user.nickname,
+        createdAt: v.createdAt,
+      }));
       return {
         page: Math.floor(skip / take) + 1,
         take,
         total,
         totalPages: Math.ceil(total / take),
-        data: rawVideos,
+        data,
       };
     } catch (error) {
       Sentry.withScope((scope) => {
