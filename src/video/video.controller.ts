@@ -52,8 +52,8 @@ export class VideoController {
   @ApiQuery({ name: 'order', required: false, enum: ['latest', 'popular'], example: 'latest' })
   @Get('')
   async getVideosWithPagination(
-    @Query('page',  ParseIntPipe) page,
-    @Query('take',  ParseIntPipe) take,
+    @Query('page',  ParseIntPipe) page:number,
+    @Query('take',  ParseIntPipe) take:number,
     @Query('order') order: 'latest' | 'popular',
   ) {
     const skip = (page - 1) * take;
