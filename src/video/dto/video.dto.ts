@@ -62,11 +62,11 @@ export class VideoListDto {
   @IsString()
   nickname: string;
    @ApiProperty({
-    example: 12.345,
-    description: '비디오 길이(초 단위, 소수점 포함)',
+    example: "00:00:30",
+    description: '비디오 길이',
   })
   @IsNumber()
-  duration: number;
+  duration: string;
 }
 
 export class VideoListFlatDto {

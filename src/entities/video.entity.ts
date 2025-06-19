@@ -30,7 +30,7 @@ export class Video {
   @Column({ type: 'varchar', nullable: true })
   uploadId: string;
   @Column({ type: 'varchar', nullable: true })
-  duration: number;
+  duration: string;
   @CreateDateColumn()
   createdAt: Date;
   @UpdateDateColumn()

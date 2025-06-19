@@ -109,7 +109,7 @@ export class VideoService {
 
     if (payload.type === 'video.asset.ready') {
       const asset = payload.data;
-      const playbackId = asset.playbook_ids?.[0]?.id;
+      const playbackId = asset.playback_ids?.[0]?.id;
       const uploadId = asset.upload_id;
 
       const thumbnailUrl = `https://image.mux.com/${playbackId}/thumbnail.jpg`;
@@ -117,12 +117,24 @@ export class VideoService {
       const video = await this.videoRepository.findOne({
         where: { uploadId },
       });
-      const duration = Math.floor(asset.duration)
+      const totalSeconds = Math.floor(asset.duration);
+      const hours   = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const seconds = totalSeconds % 60;
+
+      // 두 자리 숫자 패딩
+      const hh = String(hours).padStart(2, '0');
+      const mm = String(minutes).padStart(2, '0');
+      const ss = String(seconds).padStart(2, '0');
+
+      // 결과: "HH:MM:SS"
+      const formatted = `${hh}:${mm}:${ss}`;
+
       if (video) {
         video.playbackId = playbackId;
         video.thumbnailUrl = thumbnailUrl;
         video.videoUrl = playbackUrl;
-        video.duration = duration
+        video.duration = formatted
         await this.videoRepository.save(video);
       }
     }
