@@ -56,8 +56,8 @@ export class VideoListDto {
   })
   thumbnailUrl: string;
 
-  @ApiProperty({ example: '2023-05-09T12:34:56Z', description: '최종 수정일' })
-  updatedAt: Date;
+  @ApiProperty({ example: '2023-05-09T12:34:56Z', description: '생성일' })
+  createdAt: Date;
   @ApiProperty({ example: '퉁퉁퉁퉁퉁퉁사후르', description: '사용자 닉네임' })
   @IsString()
   nickname: string;
