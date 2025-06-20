@@ -251,9 +251,10 @@ export class VideoService {
 
   // 뷰 카운트
   async viewCountVideos(videoId: string, info?: CreateUserDto, ip?: string) {
+    console.log('ip',info)
     try {
       let userIdForRedis: string;
-      if (info.email) {
+      if (info?.email) {
         // 영상을 본사람들도 댓글 좋아요 쓸수 잇어야하니... 유저 정보에 들어가게 한다.
         const user = await this.findOrCreateUserByInfo(info);
         userIdForRedis = user.id;
@@ -286,6 +287,7 @@ export class VideoService {
         viewCount: video.viewCount,
       };
     } catch (error) {
+      console.log("error",error)
       Sentry.withScope((scope) => {
         scope.setTag('method', 'viewCountVideos');
         scope.setExtra('videoId', videoId);
