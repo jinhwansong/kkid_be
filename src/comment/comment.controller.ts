@@ -7,7 +7,7 @@ import { CommentService } from './comment.service';
 import { CreateCommentDto, GetCommentDto } from './dto/comment.dto';
 
 @ApiTags('Comment')
-@ApiBearerAuth('access-token')
+
 @Controller('comment')
 export class CommentController {
     constructor( private readonly commentService: CommentService ){}
@@ -52,6 +52,7 @@ export class CommentController {
         description: '댓글 쓰기 중 오류가 발생했습니다.',
     })
     @UseGuards(AuthGuard)
+    @ApiBearerAuth('access-token')
     @Post('')
     async createComment(
         @Body() body: CreateCommentDto,
