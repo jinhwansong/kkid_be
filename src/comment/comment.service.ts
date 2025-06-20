@@ -41,6 +41,7 @@ export class CommentService {
                 nickname: comment.user?.nickname || '알 수 없음',
                 profileImagePath: comment.user?.profileImagePath || null,
                 createdAt: comment.createdAt,
+                userId:comment.user.userId
             }));
 
             // 페이지네이션 정보 계산

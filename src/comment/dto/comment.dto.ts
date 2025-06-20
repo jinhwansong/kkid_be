@@ -34,4 +34,5 @@ export class GetCommentDto{
 
   @ApiProperty({ example: '2025-06-20T12:34:56.000Z', description: '작성일시' })
   createdAt: Date;
+  
 }
