@@ -7,8 +7,8 @@ import {
   Body,
   Controller,
   Get,
-  Headers,
   HttpCode,
+  Ip,
   Param,
   ParseIntPipe,
   Post,
@@ -16,7 +16,7 @@ import {
   Req,
   Res,
   UseGuards,
-  UseInterceptors,
+  UseInterceptors
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
@@ -234,7 +234,7 @@ export class VideoController {
     @Param('videoId') videoId: string,
     @Req() req: Request,
     @User() user?: CreateUserDto,
-    @Headers('x-forwarded-for') ip?: string,
+    @Ip() ip?: string,
   ) {
     // 로그인 안한 친구는 ip 내놔....
     const clientIp = ip || req.socket.remoteAddress || 'unknown';
