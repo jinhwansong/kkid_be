@@ -29,7 +29,6 @@ export class VideoService {
       .select([
         'video.id AS id',
         'video.title AS title',
-        'video.viewCount AS viewCount',
         'video.description AS description',
         'video.videoUrl AS videoUrl',
         'video.createdAt AS createdAt',
@@ -37,13 +36,6 @@ export class VideoService {
         'user.nickname AS nickname',
         'user.userId AS userId',
       ])
-      .addSelect((subQuery) =>
-        subQuery
-          .select('COUNT(*)')
-          .from('like', 'l')
-          .where('l.videoId = video.id'),
-        'likeCount',
-      )
       .where('video.id = :videoId', { videoId })
       .getRawOne();
       if (!video) {
@@ -54,7 +46,6 @@ export class VideoService {
         title: video.title,
         videoUrl: video.videoUrl,
         viewCount: Number(video.viewCount),
-        likeCount: Number(video.likeCount),
         description:video.description,
         nickname: video.nickname,
         userId: video.userId,
@@ -78,10 +69,21 @@ export class VideoService {
     }
   }
 
-  /** 2) 좋아요 여부 */
+  // 좋아요 여부
   async isVideoLikedByUser(videoId: string, userId: number): Promise<boolean> {
     const count = await this.likeRepository.count({ where: { video: { id: videoId }, user: { userId } } });
     return count > 0;
+  }
+
+  async getLikeStatus(videoId: string, userId: number) {
+    // 전체 좋아요 개수
+    const likeCount = await this.likeRepository.count({
+      where: { video: { id: videoId } },
+    });
+    // 유저별 좋아요 여부
+    const liked = await this.isVideoLikedByUser(videoId, userId);
+
+    return { liked, likeCount };
   }
 
   // 영상 좋아요

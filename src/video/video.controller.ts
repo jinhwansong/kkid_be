@@ -159,7 +159,7 @@ export class VideoController {
     @User() user?: CreateUserDto,
   ) {
     const liked = user
-      ? await this.videoService.isVideoLikedByUser(videoId, user.id)
+      ? await this.videoService.getLikeStatus(videoId, user.id)
       : false;
     return { liked };
   }
