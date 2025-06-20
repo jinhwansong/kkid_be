@@ -32,6 +32,7 @@ export class VideoService {
         'video.viewCount AS viewCount',
         'video.description AS description',
         'video.videoUrl AS videoUrl',
+        'video.thumbnailUrl AS thumbnailUrl',
         'user.nickname AS nickname',
         'user.userId AS userId',
       ])
@@ -56,6 +57,7 @@ export class VideoService {
         description:video.description,
         nickname: video.nickname,
         userId: video.userId,
+        thumbnailUrl:video.thumbnailUrl
       }
 
 
