@@ -31,6 +31,7 @@ export class VideoService {
         'video.title AS title',
         'video.description AS description',
         'video.videoUrl AS videoUrl',
+        'video.viewCount AS viewCount',
         'video.createdAt AS createdAt',
         'video.thumbnailUrl AS thumbnailUrl',
         'user.nickname AS nickname',
