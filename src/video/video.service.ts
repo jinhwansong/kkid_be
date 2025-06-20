@@ -77,6 +77,67 @@ export class VideoService {
       );
     }
   }
+
+  /** 2) 좋아요 여부 */
+  async isVideoLikedByUser(videoId: string, userId: number): Promise<boolean> {
+    const count = await this.likeRepository.count({ where: { video: { id: videoId }, user: { userId } } });
+    return count > 0;
+  }
+
+  // 영상 좋아요
+  async toggleLike(videoId: string, info?: CreateUserDto) {
+    try {
+      const user = await this.findOrCreateUserByInfo(info);
+      // 영상 있니?
+      const videoEx = await this.videoRepository
+        .createQueryBuilder('video')
+        .where('video.id = :video', { video: videoId })
+        .getExists();
+      if (!videoEx) {
+        throw new NotFoundException('존재하지 않는 영상입니다.');
+      }
+      // 좋아요 되있니?
+      const likeEx = await this.likeRepository
+        .createQueryBuilder('like')
+        .where('like.userId = :userId', { userId: user.id })
+        .andWhere('like.videoId = :videoId', { videoId })
+        .getOne();
+      // 있으면 삭제
+      if (likeEx) {
+        await this.likeRepository.remove(likeEx);
+      } else {
+        // 없으면 좋아용
+        await this.likeRepository
+          .createQueryBuilder()
+          .insert()
+          .into('like')
+          .values({ user: { id: user.id }, video: { id: videoId } })
+          .execute();
+      }
+      const { likeCount } = await this.likeRepository
+        .createQueryBuilder('like')
+        .select('COUNT(*)', 'likeCount')
+        .where('like.videoId = :videoId', { videoId })
+        .getRawOne();
+      // execute 데이터를 바꿀때 사용한당
+      return {
+        message: likeEx ? '좋아요 취소' : '좋아요',
+        liked: !likeEx,
+        likeCount: Number(likeCount),
+      };
+    } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'toggleLike');
+        scope.setExtra('videoId', videoId);
+        scope.setContext('좋아요 에러', {
+          메시지: '좋아요 처리 중 오류 발생',
+        });
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException('좋아요 처리 중 오류가 발생했습니다.');
+    }
+  }
+
   // 웹훅
   async muxWebHook(req, res) {
     const rawBuf: Buffer = req.body;
@@ -90,9 +151,7 @@ export class VideoService {
   const provided  = v1Part.slice(3);  // remove 'v1='
 
   // 4) 시크릿 로드
-  const secretRaw = process.env.NODE_ENV === 'production'
-    ? process.env.MUX_WEBHOOK_SECRET_NEST
-    : process.env.MUX_WEBHOOK_SECRET;
+  const secretRaw = process.env.MUX_WEBHOOK_SECRET
   if (!secretRaw) {
     return res.status(500).send('Webhook secret not configured');
   }
@@ -110,11 +169,6 @@ export class VideoService {
       .createHmac('sha256', secret)
       .update(hmacInput)
       .digest('hex');
-
-    // 7) 디버그 로그 (검증 실패 시 비교용)
-    console.log('🔍 [DEBUG] expected:', expected);
-    console.log('🔍 [DEBUG] provided:', provided);
-
 
     const isValid = crypto.timingSafeEqual(
       Buffer.from(expected, 'hex'),
@@ -241,59 +295,7 @@ export class VideoService {
       throw new BadRequestException('조회수 처리 중 오류가 발생했습니다.');
     }
   }
-  // 영상 좋아요
-  async toggleLike(videoId: string, info?: CreateUserDto) {
-    try {
-      const user = await this.findOrCreateUserByInfo(info);
-      // 영상 있니?
-      const videoEx = await this.videoRepository
-        .createQueryBuilder('video')
-        .where('video.id = :video', { video: videoId })
-        .getExists();
-      if (!videoEx) {
-        throw new NotFoundException('존재하지 않는 영상입니다.');
-      }
-      // 좋아요 되있니?
-      const likeEx = await this.likeRepository
-        .createQueryBuilder('like')
-        .where('like.userId = :userId', { userId: user.id })
-        .andWhere('like.videoId = :videoId', { videoId })
-        .getOne();
-      // 있으면 삭제
-      if (likeEx) {
-        await this.likeRepository.remove(likeEx);
-      } else {
-        // 없으면 좋아용
-        await this.likeRepository
-          .createQueryBuilder()
-          .insert()
-          .into('like')
-          .values({ user: { id: user.id }, video: { id: videoId } })
-          .execute();
-      }
-      const { likeCount } = await this.likeRepository
-        .createQueryBuilder('like')
-        .select('COUNT(*)', 'likeCount')
-        .where('like.videoId = :videoId', { videoId })
-        .getRawOne();
-      // execute 데이터를 바꿀때 사용한당
-      return {
-        message: likeEx ? '좋아요 취소' : '좋아요',
-        liked: !likeEx,
-        likeCount: Number(likeCount),
-      };
-    } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'toggleLike');
-        scope.setExtra('videoId', videoId);
-        scope.setContext('좋아요 에러', {
-          메시지: '좋아요 처리 중 오류 발생',
-        });
-        Sentry.captureException(error);
-      });
-      throw new BadRequestException('좋아요 처리 중 오류가 발생했습니다.');
-    }
-  }
+  
   
   // 유저 조회
   async findOrCreateUserByInfo(info: CreateUserDto): Promise<User> {

@@ -1,4 +1,7 @@
 import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
+import { User } from '@/common/decorator/user.decorator';
+import { AuthOptionalGuard } from '@/common/guard/auth-optional.guard';
+import { AuthGuard } from '@/common/guard/auth.guard';
 import { MuxService } from '@/mux/mux.service';
 import {
   Body,
@@ -12,6 +15,7 @@ import {
   Query,
   Req,
   Res,
+  UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -58,6 +62,8 @@ export class VideoController {
   ) {
     return this.videoService.getVideosWithPagination(take, page, order);
   }
+
+
   @ApiOperation({ summary: '유저가 업로드한 영상 목록' })
   @ApiResponse({
     status: 200,
@@ -67,11 +73,6 @@ export class VideoController {
   @ApiResponse({
     status: 401,
     description: '인증되지 않은 사용자',
-  })
-  @ApiHeader({
-    name: 'authorization',
-    required: true,
-    description: 'Bearer 액세스 토큰',
   })
   @ApiQuery({
     name: 'userId',
@@ -83,20 +84,17 @@ export class VideoController {
   @ApiQuery({ name: 'page', required: false, example: 1, description: '페이지 번호 (1부터)' })
   @ApiQuery({ name: 'take', required: false, example: 10, description: '한 페이지당 항목 수' })
   @ApiQuery({ name: 'order', required: false, enum: ['latest', 'popular'], example: 'latest' })
+  @UseGuards(AuthGuard)
   @Get('user')
   async getMyVideos(
-    @Headers('authorization') authHeader: string,
-    @Query('userId') userId: string,
+    @User() user: CreateUserDto,
+    @Query('userId') userId: number,
     @Query('page',  ParseIntPipe) page:number,
     @Query('take',  ParseIntPipe) take:number,
-    @Query('order') order: 'latest' | 'popular' = 'latest',
+    @Query('order') order: 'latest' | 'popular',
   ) {
-    const token = authHeader?.replace('Bearer', '');
-    const user = await this.authVerifService.verifyTokenAndGetUser(token);
-    
     const targetUserId = userId || user.id;
-    const skip = (page - 1) * take;
-    return this.videoService.getMyVideos(targetUserId, take, skip, order);
+    return this.videoService.getMyVideos(targetUserId, take, page, order);
   }
   
   @ApiOperation({ summary: '영상 목록 상세' })
@@ -119,10 +117,6 @@ export class VideoController {
   ) {
     return this.videoService.getVideosWithDetail(videoId);
   }
-  
-  
- 
-  
   
   @ApiOperation({ summary: '영상 좋아요/취소' })
   @ApiResponse({
@@ -148,47 +142,52 @@ export class VideoController {
     status: 500,
     description: '좋아요 처리 중 오류가 발생했습니다.',
   })
-  @ApiHeader({
-    name: 'authorization',
-    required: true,
-    description: 'Bearer 액세스 토큰',
-  })
+  @UseGuards(AuthGuard)
   @Post('like/:videoId')
   async toggleLike(
     @Param('videoId') videoId: string,
-    @Headers('authorization') authHeader: string,
+    @User() user?: CreateUserDto,
   ) {
-    const token = authHeader?.replace('Bearer', '');
-    const user = await this.authVerifService.verifyTokenAndGetUser(token);
     return this.videoService.toggleLike(videoId, user);
   }
-  
+
+  @Get('like-status/:videoId')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '좋아요 여부 조회' })
+  async getLikeStatus(
+    @Param('videoId') videoId: string,
+    @User() user?: CreateUserDto,
+  ) {
+    const liked = user
+      ? await this.videoService.isVideoLikedByUser(videoId, user.id)
+      : false;
+    return { liked };
+  }
+
   @ApiOperation({ summary: 'Mux upload용 URL 발급' })
   @ApiResponse({
     status: 201,
     description: 'Direct Upload용 Mux URL 발급',
     type: MuxUploadResponseDto,
   })
+  @UseGuards(AuthGuard)
   @Post('uploadUrl')
-  async getUploadUrl(@Headers('authorization') authHeader: string) {
-    const token = authHeader?.replace('Bearer', '');
-    const user = await this.authVerifService.verifyTokenAndGetUser(token);
+  async getUploadUrl(@User() user: CreateUserDto) {
     return this.muxService.createDirectUpload(user);
   }
+
   @ApiOperation({ summary: 'Mux 업로드 완료 후 등록 요청' })
   @ApiResponse({
     status: 201,
     description: 'Mux 영상 등록 성공',
     type: VideoResponseDto,
   })
+  @UseGuards(AuthGuard)
   @Post('register')
   async registerMuxVideo(
     @Body() body: RegisterMuxVideoDto,
-    @Headers('authorization') authHeader: string,
+    @User() user: CreateUserDto,
   ) {
-    const token = authHeader?.replace('Bearer', '');
-    const user = await this.authVerifService.verifyTokenAndGetUser(token);
-
     return this.videoService.registerMuxVideo(user, body);
   }
   @ApiOperation({ summary: '웹훅' })
@@ -197,13 +196,9 @@ export class VideoController {
   async muxWebHook(@Req() req: Request, @Res() res: Response) {
     return this.videoService.muxWebHook(req, res);
   }
+
   @ApiOperation({ summary: '조회수 증가' })
   @ApiParam({ name: 'videoId', type: String, description: '조회수 증가시킬 비디오 ID' })
-  @ApiHeader({
-    name: 'authorization',
-    required: false,
-    description: 'Access token in the format: Bearer <token>',
-  })
   @ApiHeader({
     name: 'x-forwarded-for',
     required: false,
@@ -236,23 +231,17 @@ export class VideoController {
     status: 500,
     description: '조회수 처리 중 오류가 발생했습니다.',
   })
+  @UseGuards(AuthOptionalGuard)
   @Post(':videoId')
   async viewCountVideos(
     @Param('videoId') videoId: string,
     @Req() req: Request,
-    @Headers('authorization') authHeader?: string,
+    @User() user?: CreateUserDto,
     @Headers('x-forwarded-for') ip?: string,
   ) {
-     let info: CreateUserDto | undefined = undefined;
-    // 로그인 한 사람꺼만
-    if (authHeader) {
-      const token = authHeader?.replace('Bearer', '');
-      const user = await this.authVerifService.verifyTokenAndGetUser(token);
-      info = { email: user.email, username: user.username, nickname:user.nickname, id: user.id };
-    } 
     // 로그인 안한 친구는 ip 내놔....
     const clientIp = ip || req.socket.remoteAddress || 'unknown';
-    return this.videoService.viewCountVideos(videoId, info, clientIp);
+    return this.videoService.viewCountVideos(videoId, user, clientIp);
   }
   
 
