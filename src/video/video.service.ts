@@ -80,23 +80,37 @@ export class VideoService {
     const signature = req.headers['mux-signature'] as string;
     if (!signature) return res.status(403).send('Missing signature');
 
+     // 3) t=,v1= 파싱
     const [tPart, v1Part] = signature.split(',');
-    const timestamp = tPart.replace('t=', '');
-    const provided = v1Part.replace('v1=', '');
-   
-    const secret = process.env.NODE_ENV === 'production'
-      ? process.env.MUX_WEBHOOK_SECRET_NEST!
-      : process.env.MUX_WEBHOOK_SECRET!;
-    if (!secret) return res.status(500).send('Webhook secret not configured');
+    const timestamp = tPart.slice(2);   // remove 't='
+    const provided  = v1Part.slice(3);  // remove 'v1='
 
-    // timestamp+"."+원본바디
+    // 4) 시크릿 로드
+    const secretRaw = process.env.NODE_ENV === 'production'
+      ? process.env.MUX_WEBHOOK_SECRET_NEST
+      : process.env.MUX_WEBHOOK_SECRET;
+    if (!secretRaw) {
+      return res.status(500).send('Webhook secret not configured');
+    }
+
+    const secret = secretRaw.trim();
+
+    // 5) HMAC 입력값(Buffer) 생성
+    const hmacInput = Buffer.concat([
+      Buffer.from(timestamp + '.', 'utf8'),
+      rawBuf
+    ]);
+
+    // 6) expected HMAC 계산
     const expected = crypto
       .createHmac('sha256', secret)
-      .update(Buffer.concat([
-        Buffer.from(timestamp + '.', 'utf8'),
-        rawBuf
-      ]))
+      .update(hmacInput)
       .digest('hex');
+
+    // 7) 디버그 로그 (검증 실패 시 비교용)
+    console.log('🔍 [DEBUG] expected:', expected);
+    console.log('🔍 [DEBUG] provided:', provided);
+
 
     const isValid = crypto.timingSafeEqual(
       Buffer.from(expected, 'hex'),
