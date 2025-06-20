@@ -30,7 +30,7 @@ export class VideoService {
         'video.id AS id',
         'video.title AS title',
         'video.description AS description',
-        'video.videoUrl AS videoUrl',
+        'video.playbackId AS playbackId',
         'video.viewCount AS viewCount',
         'video.createdAt AS createdAt',
         'video.thumbnailUrl AS thumbnailUrl',
@@ -45,7 +45,7 @@ export class VideoService {
       return {
         id: video.id,
         title: video.title,
-        videoUrl: video.videoUrl,
+        playbackId: video.playbackId,
         viewCount: Number(video.viewCount),
         description:video.description,
         nickname: video.nickname,
