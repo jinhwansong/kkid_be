@@ -1,4 +1,3 @@
-import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
 import { User } from '@/common/decorator/user.decorator';
 import { AuthOptionalGuard } from '@/common/guard/auth-optional.guard';
 import { AuthGuard } from '@/common/guard/auth.guard';
@@ -23,7 +22,8 @@ import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse
 import { Request } from 'express';
 import * as multer from 'multer';
 import { MuxUploadResponseDto, RegisterMuxVideoDto } from './dto/mux.dto';
-import { CreateUserDto, VideoListFlatDto, VideoResponseDto } from './dto/video.dto';
+import { CreateUserDto } from './dto/user.dto';
+import { VideoListFlatDto, VideoResponseDto } from './dto/video.dto';
 import { VideoService } from './video.service';
 
 @UseInterceptors(
@@ -38,14 +38,13 @@ export class VideoController {
   constructor(
     private readonly videoService: VideoService,
     private readonly muxService: MuxService,
-    private readonly authVerifService: AuthVerificationService,
   ) {}
  
   @ApiOperation({ summary: '전체 영상 목록 리스트' })
   @ApiResponse({
     status: 200,
     description: '전체 영상 목록 리스트입니다.',
-    type: VideoListFlatDto,
+    type: [VideoListFlatDto],
   })
   @ApiResponse({
     status: 500,

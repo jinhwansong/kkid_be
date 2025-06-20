@@ -42,6 +42,12 @@ export class User {
     nullable: false,
   })
   userId: number;
+  @Column({
+    type: 'varchar',
+    length: 255,
+    nullable: true
+  })
+  profileImagePath: string;
   @CreateDateColumn()
   createdAt: Date;
   @UpdateDateColumn()

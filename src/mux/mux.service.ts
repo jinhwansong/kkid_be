@@ -1,5 +1,5 @@
-import { User, Video } from '@/entities';
-import { CreateUserDto } from '@/video/dto/video.dto';
+import { User } from '@/entities';
+import { CreateUserDto } from '@/video/dto/user.dto';
 import Mux from '@mux/mux-node';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -15,8 +15,6 @@ export class MuxService {
     private configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
-    @InjectRepository(Video)
-    private readonly videoRepository: Repository<Video>,
   ) {
     try {
       const tokenId = this.configService.get<string>('MUX_ACCESS_TOKEN');

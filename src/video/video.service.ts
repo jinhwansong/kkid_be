@@ -1,12 +1,14 @@
 import { Like, User, Video } from '@/entities';
 import { RedisService } from '@/redis/redis.service';
+import { UserService } from '@/user/user.service';
 import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as Sentry from '@sentry/node';
 import * as crypto from 'crypto';
+import dayjs from 'dayjs';
 import { Repository } from 'typeorm';
 import { RegisterMuxVideoDto } from './dto/mux.dto';
-import { CreateUserDto } from './dto/video.dto';
+import { CreateUserDto } from './dto/user.dto';
 
 @Injectable()
 export class VideoService {
@@ -18,6 +20,7 @@ export class VideoService {
     @InjectRepository(Like)
     private readonly likeRepository: Repository<Like>,
     private readonly redisService: RedisService,
+    private readonly userService: UserService, 
   ) {}
    
   // 영상 목록 상세
@@ -90,7 +93,7 @@ export class VideoService {
   // 영상 좋아요
   async toggleLike(videoId: string, info?: CreateUserDto) {
     try {
-      const user = await this.findOrCreateUserByInfo(info);
+      const user = await this.userService.findOrCreateUser(info);
       // 영상 있니?
       const videoEx = await this.videoRepository
         .createQueryBuilder('video')
@@ -220,9 +223,9 @@ export class VideoService {
   }
   
   // 사용자가 업로드 후 등록 요청을 보냄
-  async registerMuxVideo(info: CreateUserDto, body: RegisterMuxVideoDto) {
+  async registerMuxVideo(info: CreateUserDto , body: RegisterMuxVideoDto) {
     try {
-      const user = await this.findOrCreateUserByInfo(info);
+      const user = await this.userService.findOrCreateUser(info);
       // db에 저장
       const video = this.videoRepository.create({
         title: body.title,
@@ -252,12 +255,11 @@ export class VideoService {
 
   // 뷰 카운트
   async viewCountVideos(videoId: string, info?: CreateUserDto, ip?: string) {
-    console.log('ip',info)
     try {
       let userIdForRedis: string;
       if (info?.email) {
         // 영상을 본사람들도 댓글 좋아요 쓸수 잇어야하니... 유저 정보에 들어가게 한다.
-        const user = await this.findOrCreateUserByInfo(info);
+        const user = await this.userService.findOrCreateUser(info);
         userIdForRedis = user.id;
       } else if (ip) {
         // 비회원 도 카운트 늘려야되용....
@@ -302,23 +304,7 @@ export class VideoService {
   }
   
   
-  // 유저 조회
-  async findOrCreateUserByInfo(info: CreateUserDto): Promise<User> {
-    let user = await this.userRepository.findOne({
-      where: { email: info.email },
-    });
-    if (!user) {
-      user = this.userRepository.create({
-        email: info.email,
-        username: info.username,
-        nickname:info.nickname,
-        userId:info.id
-      });
-      await this.userRepository.save(user);
-    }
 
-    return user;
-  }
   // 전체 영상 목록 리스트
   async getVideosWithPagination(
     limit: number = 10,
@@ -350,11 +336,22 @@ export class VideoService {
         duration: v.duration
       }));
 
+      // 이번주 top 1
+      const weekTopVideo = await this.videoRepository
+      .createQueryBuilder('video')
+      .where('video.createdAt >= :weekStart', {
+        weekStart:dayjs().startOf('week').toDate()
+      })
+      .orderBy('video.viewCount', 'DESC')
+      .addOrderBy('video.createdAt', 'ASC')
+      .select(['video.id'])
+      .getOne();
       return {
         totalPage:  Math.ceil(total / limit),
         page: Math.floor(skip / limit) + 1,
         data,
-        message:   '전체 영상 목록을 조회했습니다.',
+        message: '전체 영상 목록을 조회했습니다.',
+        weekTopVideo
       };
     } catch (error) {
       Sentry.withScope((scope) => {
@@ -430,4 +427,5 @@ export class VideoService {
 
       }
   }
+
 }

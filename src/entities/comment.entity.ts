@@ -2,8 +2,8 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  JoinColumn,
   ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -22,17 +22,10 @@ export class Comment {
   updatedAt: Date;
   // 댓글 남긴 사람
   @ManyToOne(() => User, (user) => user.comment, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'userId' })
   user: User;
   // 대상 비디오
   @ManyToOne(() => Video, (video) => video.comment, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'videoId' }) 
   video: Video;
-  // 부모 댓글
-  @ManyToOne(() => Comment, (comment) => comment.children, {
-    nullable: true,
-    onDelete: 'CASCADE',
-  })
-  parent: Comment;
-  // 자식 댓글
-  @OneToMany(() => Comment, (comment) => comment.parent)
-  children: Comment[];
 }

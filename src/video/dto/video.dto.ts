@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class VideoUploadDto {
   @ApiProperty({
@@ -19,23 +19,7 @@ export class VideoUploadDto {
   description: string;
 }
 
-export class CreateUserDto {
-  @ApiProperty({ example: 'user@example.com', description: '이메일' })
-  @IsEmail()
-  email: string;
 
-  @ApiProperty({ example: '트탈라레오', description: '사용자 이름' })
-  @IsString()
-  username: string;
-  @ApiProperty({ example: '퉁퉁퉁퉁퉁퉁사후르', description: '사용자 닉네임' })
-  @IsString()
-  nickname: string;
-  @ApiProperty({
-    example: 1,
-    description: '유저 고유아이디',
-  })
-  id: number;
-}
 
 export class VideoListDto {
   @ApiProperty({
@@ -61,7 +45,7 @@ export class VideoListDto {
   @ApiProperty({ example: '퉁퉁퉁퉁퉁퉁사후르', description: '사용자 닉네임' })
   @IsString()
   nickname: string;
-   @ApiProperty({
+  @ApiProperty({
     example: "00:00:30",
     description: '비디오 길이',
   })
@@ -96,10 +80,10 @@ export class VideoResponseDto extends VideoListDto{
   description: string;
 
   @ApiProperty({
-    example: 'https://mybucket.com/video/1234.mp4',
+    example: 'C52Fu8r79UfIp1GX02jE8lnLBE4th5E2TwC7YfTaYnwU',
     description: '비디오 재생 URL',
   })
-  videoUrl: string;
+  playbackId: string;
 
   @ApiProperty({ example: 103, description: '조회수' })
   viewCount: number;
