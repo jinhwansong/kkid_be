@@ -45,11 +45,12 @@ export class CommentService {
             }));
 
             // 페이지네이션 정보 계산
-            const totalPages = Math.ceil(totalCount / pageSize);
+            const totalPage = Math.ceil(totalCount / pageSize);
 
             return {
                 totalCount,
-                totalPages,
+                totalPage,
+                page,
                 data,
                 message: '영상에 달린 댓글 리스트를 조회했습니다.',
             };
