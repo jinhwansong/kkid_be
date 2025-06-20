@@ -24,9 +24,7 @@ Sentry.init({
 
 
 async function bootstrap() {
-  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bodyParser: false,
-  });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.set('trust proxy', 1);
   app.enableCors({
     origin: ['http://localhost:3000'],
@@ -34,9 +32,9 @@ async function bootstrap() {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie', 'Cookie'],
   });
-  app.use(
+ app.use(
     '/video/webhook/mux',
-    bodyParser.raw({ type: 'application/json', limit: '10mb' }),
+    bodyParser.raw({ type: 'application/json' }),
   );
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: true }));

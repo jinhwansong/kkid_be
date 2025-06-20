@@ -77,28 +77,31 @@ export class VideoService {
   async muxWebHook(req, res) {
     const rawBuf: Buffer = req.body;
     const rawBody = rawBuf.toString('utf8');
-
     const signature = req.headers['mux-signature'] as string;
     if (!signature) return res.status(403).send('Missing signature');
 
     const [tPart, v1Part] = signature.split(',');
     const timestamp = tPart.replace('t=', '');
     const provided = v1Part.replace('v1=', '');
-
+   
     const secret = process.env.NODE_ENV === 'production'
-      ? process.env.MUX_WEBHOOK_SECRET_NEST
-      : process.env.MUX_WEBHOOK_SECRET;
+      ? process.env.MUX_WEBHOOK_SECRET_NEST!
+      : process.env.MUX_WEBHOOK_SECRET!;
     if (!secret) return res.status(500).send('Webhook secret not configured');
 
     // timestamp+"."+원본바디
     const expected = crypto
       .createHmac('sha256', secret)
-      .update(`${timestamp}.${rawBody}`, 'utf8')
+      .update(Buffer.concat([
+        Buffer.from(timestamp + '.', 'utf8'),
+        rawBuf
+      ]))
       .digest('hex');
 
-    const isValid = expected.length === provided.length
-      && crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(provided));
-
+    const isValid = crypto.timingSafeEqual(
+      Buffer.from(expected, 'hex'),
+      Buffer.from(provided, 'hex')
+    );
     if (!isValid) {
       Sentry.captureMessage('MUX Webhook Signature Invalid', { level: 'warning' });
       return res.status(403).send('Invalid signature');
