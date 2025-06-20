@@ -1,4 +1,4 @@
-import { User } from '@/entities';
+import { User, Video } from '@/entities';
 import { CreateUserDto } from '@/video/dto/video.dto';
 import Mux from '@mux/mux-node';
 import { Injectable } from '@nestjs/common';
@@ -15,6 +15,8 @@ export class MuxService {
     private configService: ConfigService,
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Video)
+    private readonly videoRepository: Repository<Video>,
   ) {
     try {
       const tokenId = this.configService.get<string>('MUX_ACCESS_TOKEN');
@@ -72,4 +74,6 @@ export class MuxService {
       throw new Error('업로드 URL을 생성하는 데 실패했습니다.');
     }
   }
+
+
 }

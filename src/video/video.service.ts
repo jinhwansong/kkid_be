@@ -81,17 +81,15 @@ export class VideoService {
     if (!signature) return res.status(403).send('Missing signature');
 
      // 3) t=,v1= 파싱
-    const [tPart, v1Part] = signature.split(',');
-    const timestamp = tPart.slice(2);   // remove 't='
-    const provided  = v1Part.slice(3);  // remove 'v1='
+  const [tPart, v1Part] = signature.split(',');
+  const timestamp = tPart.slice(2);   // remove 't='
+  const provided  = v1Part.slice(3);  // remove 'v1='
 
-    // 4) 시크릿 로드
-    const secretRaw = process.env.NODE_ENV === 'production'
-      ? process.env.MUX_WEBHOOK_SECRET_NEST
-      : process.env.MUX_WEBHOOK_SECRET;
-    if (!secretRaw) {
-      return res.status(500).send('Webhook secret not configured');
-    }
+  // 4) 시크릿 로드
+  const secretRaw = process.env.MUX_WEBHOOK_SECRET
+  if (!secretRaw) {
+    return res.status(500).send('Webhook secret not configured');
+  }
 
     const secret = secretRaw.trim();
 
