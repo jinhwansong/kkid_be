@@ -158,10 +158,7 @@ export class VideoController {
     @Param('videoId') videoId: string,
     @User() user?: CreateUserDto,
   ) {
-    const liked = user
-      ? await this.videoService.getLikeStatus(videoId, user.id)
-      : false;
-    return { liked };
+    return this.videoService.getLikeStatus(videoId, user.id)
   }
 
   @ApiOperation({ summary: 'Mux upload용 URL 발급' })
