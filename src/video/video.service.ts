@@ -86,7 +86,9 @@ export class VideoService {
   const provided  = v1Part.slice(3);  // remove 'v1='
 
   // 4) 시크릿 로드
-  const secretRaw = process.env.MUX_WEBHOOK_SECRET
+  const secretRaw = process.env.NODE_ENV === 'production'
+    ? process.env.MUX_WEBHOOK_SECRET_NEST
+    : process.env.MUX_WEBHOOK_SECRET;
   if (!secretRaw) {
     return res.status(500).send('Webhook secret not configured');
   }
