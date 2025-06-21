@@ -408,11 +408,10 @@ export class VideoService {
           }));
 
         return {
-          total,
           totalPage:  Math.ceil(total / limit),
           page: Math.floor(skip / limit) + 1,
           data,
-          message:   '전체 영상 목록을 조회했습니다.',
+          message: '유저 영상 목록을 조회했습니다.',
         };
       } catch (error) {
         Sentry.withScope((scope) => {
@@ -429,5 +428,32 @@ export class VideoService {
 
       }
   }
+  // 영상 개수만 반환
+  async getMyVideoTotal (userInfo: number) {
+    try {
+      const user = await this.userRepository.findOneBy({ userId: userInfo });
+    if (!user) {
+      return { count: 0, message: '유저가 없습니다.' };
+    }
 
+    const count = await this.videoRepository
+      .createQueryBuilder('video')
+      .where('video.userId = :userId', { userId: user.id })
+      .getCount();
+
+    return {
+      count,
+      message: '업로드한 영상 개수를 조회했습니다.',
+    };
+    } catch (error) {
+      Sentry.withScope((scope) => {
+        scope.setTag('method', 'getMyVideoCount');
+        scope.setExtra('userId', userInfo);
+        Sentry.captureException(error);
+      });
+      throw new BadRequestException(
+        '영상 개수를 불러오는 중 오류가 발생했습니다.',
+      );
+    }
+  }
 }

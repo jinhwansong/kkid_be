@@ -96,6 +96,39 @@ export class VideoController {
     return this.videoService.getMyVideos(targetUserId, take, page, order);
   }
   
+  @ApiOperation({ summary: '유저가 업로드한 영상 개수' })
+  @ApiResponse({
+    status: 200,
+    description: '유저가 업로드한 영상 개수',
+    schema: {
+      example: {
+        count: 12,
+        message: '업로드한 영상 개수를 조회했습니다.',
+      },
+    },
+  })
+  @ApiResponse({
+    status: 401,
+    description: '인증되지 않은 사용자',
+  })
+  @ApiQuery({
+    name: 'userId',
+    required: false,
+    example: 'abc123',
+    description: '조회할 유저 ID (없으면 본인)',
+  })
+  @ApiQuery({ name: 'userId', required: false, example: 'abc123', description: '조회 대상 유저 ID (없으면 내 영상)' })
+  @UseGuards(AuthGuard)
+  @Get('user/count')
+  async getMyVideoTotal(
+    @User() user: CreateUserDto,
+    @Query('userId') userId: number,
+  ) {
+    const targetUserId = userId || user.id;
+    return this.videoService.getMyVideoTotal(targetUserId);
+  }
+
+
   @ApiOperation({ summary: '영상 목록 상세' })
   @ApiResponse({
     status: 200,
