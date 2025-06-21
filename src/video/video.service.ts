@@ -1,7 +1,8 @@
 import { Like, User, Video } from '@/entities';
+import { MuxService } from '@/mux/mux.service';
 import { RedisService } from '@/redis/redis.service';
 import { UserService } from '@/user/user.service';
-import { BadRequestException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as Sentry from '@sentry/node';
 import * as crypto from 'crypto';
@@ -20,7 +21,9 @@ export class VideoService {
     @InjectRepository(Like)
     private readonly likeRepository: Repository<Like>,
     private readonly redisService: RedisService,
-    private readonly userService: UserService, 
+    private readonly userService: UserService,
+    private readonly muxService: MuxService, 
+    
   ) {}
    
   // 영상 목록 상세
@@ -216,6 +219,7 @@ export class VideoService {
         video.thumbnailUrl = thumbnailUrl;
         video.videoUrl = playbackUrl;
         video.duration = formatted
+        video.assetId = asset.id;
         await this.videoRepository.save(video);
       }
     }
@@ -303,8 +307,6 @@ export class VideoService {
     }
   }
   
-  
-
   // 전체 영상 목록 리스트
   async getVideosWithPagination(
     limit: number = 10,
@@ -456,4 +458,38 @@ export class VideoService {
       );
     }
   }
+
+  // 영상 삭제
+  async deleteVideo(videoId: string, userId: number) {
+  const video = await this.videoRepository.findOne({
+    where: { id: videoId },
+    relations: ['user'],
+  });
+
+  if (!video) throw new NotFoundException('영상이 존재하지 않습니다.');
+  if (video.user.userId !== userId) throw new ForbiddenException('삭제 권한이 없습니다.');
+
+  try {
+    await this.muxService.deleteAsset(video.assetId, {
+      email: video.user.email,
+      nickname: video.user.nickname,
+    });
+
+    await this.videoRepository.remove(video);
+
+    return { message: '영상이 삭제되었습니다.' };
+  } catch (error) {
+    Sentry.withScope((scope) => {
+      scope.setTag('task', 'video-delete');
+      scope.setExtra('videoId', video.id);
+      scope.setUser({ email: video.user.email });
+      scope.setContext('영상 삭제 실패', {
+        이유: 'Mux 삭제 혹은 DB 삭제 중 오류',
+        assetId: video.assetId,
+      });
+      Sentry.captureException(error);
+    });
+    throw new InternalServerErrorException('영상 삭제 중 오류가 발생했습니다.');
+  }
+}
 }

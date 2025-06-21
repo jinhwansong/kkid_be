@@ -73,5 +73,22 @@ export class MuxService {
     }
   }
 
-
+  async deleteAsset(assetId: string, info: { email: string; nickname: string }) {
+    try {
+      await this.mux.video.assets.delete(assetId);
+      return { success: true };
+    } catch (error) {
+       Sentry.withScope((scope) => {
+        scope.setTag('task', 'video-delete');
+        scope.setExtra('nickname', info.nickname);
+        scope.setContext('Mux 영상 삭제 실패', {
+          이유: 'Mux API 응답 실패',
+          사용자: info.email,
+          assetId,
+        });
+        Sentry.captureException(error);
+      });
+      throw new Error('Mux 영상 삭제에 실패했습니다.');
+    }
+  }
 }

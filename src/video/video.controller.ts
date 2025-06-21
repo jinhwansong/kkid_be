@@ -5,6 +5,7 @@ import { MuxService } from '@/mux/mux.service';
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpCode,
   Ip,
@@ -272,7 +273,13 @@ export class VideoController {
     const clientIp = ip || req.socket.remoteAddress || 'unknown';
     return this.videoService.viewCountVideos(videoId, user, clientIp);
   }
-  
-
+  @UseGuards(AuthGuard)
+  @Delete(':videoId')
+  async deleteVideo(
+    @Param('videoId') videoId: string,
+    @User() userId: CreateUserDto,
+  ) {
+    return this.videoService.deleteVideo(videoId, userId.id);
+  }
 }
 

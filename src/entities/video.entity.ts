@@ -15,9 +15,9 @@ import { User } from './user.entity';
 export class Video {
   @PrimaryGeneratedColumn('uuid')
   id: string;
-  @Column({ type: 'varchar', length: 255, nullable: false })
+  @Column({ type: 'varchar', length: 50, nullable: false })
   title: string;
-  @Column({ type: 'varchar', nullable: false })
+  @Column({ type: 'varchar', nullable: false, length:300 })
   description: string;
   @Column({ type: 'varchar', nullable: true })
   videoUrl: string;
@@ -29,8 +29,10 @@ export class Video {
   playbackId: string;
   @Column({ type: 'varchar', nullable: true })
   uploadId: string;
-  @Column({ type: 'varchar', nullable: true })
+  @Column({ type: 'varchar', nullable: true,  })
   duration: string;
+  @Column({ type: 'varchar', nullable: true,  })
+  assetId:string
   @CreateDateColumn()
   createdAt: Date;
   @UpdateDateColumn()
