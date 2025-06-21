@@ -27,7 +27,7 @@ async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   app.set('trust proxy', 1);
   app.enableCors({
-    origin: ['http://localhost:3000'],
+    origin: ['http://localhost:3000','https://jammit-fe-six.vercel.app'],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Set-Cookie', 'Cookie'],
