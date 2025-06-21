@@ -408,6 +408,7 @@ export class VideoService {
           }));
 
         return {
+          total,
           totalPage:  Math.ceil(total / limit),
           page: Math.floor(skip / limit) + 1,
           data,
