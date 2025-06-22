@@ -1,4 +1,4 @@
-import { Like, User, Video } from '@/entities';
+import { Like, User, Video, VideoMetadata } from '@/entities';
 import { MuxService } from '@/mux/mux.service';
 import { RedisService } from '@/redis/redis.service';
 import { UserService } from '@/user/user.service';
@@ -20,6 +20,9 @@ export class VideoService {
     private readonly userRepository: Repository<User>,
     @InjectRepository(Like)
     private readonly likeRepository: Repository<Like>,
+    @InjectRepository(VideoMetadata)
+    private readonly videoMetadataRepository: Repository<VideoMetadata>,
+    
     private readonly redisService: RedisService,
     private readonly userService: UserService,
     private readonly muxService: MuxService, 
@@ -32,6 +35,7 @@ export class VideoService {
       const video = await this.videoRepository
       .createQueryBuilder('video')
       .leftJoinAndSelect('video.user', 'user')
+      .leftJoinAndSelect('video.metadata', 'metadata')
       .select([
         'video.id AS id',
         'video.title AS title',
@@ -40,6 +44,10 @@ export class VideoService {
         'video.viewCount AS viewCount',
         'video.createdAt AS createdAt',
         'video.thumbnailUrl AS thumbnailUrl',
+        'metadata.creatorName AS creatorName',
+        'metadata.creatorTitle AS creatorTitle',
+        'metadata.thumbnailUrl AS thumbnailUrl',
+        'metadata.slug AS slug',
         'user.nickname AS nickname',
         'user.userId AS userId',
       ])
@@ -53,6 +61,10 @@ export class VideoService {
         title: video.title,
         playbackId: video.playbackId,
         viewCount: Number(video.viewCount),
+        creatorThumbnailUrl:video.thumbnailUrl,
+        creatorName:video.creatorName,
+        creatorTitle:video.creatorTitle,
+        slug:video.slug,
         description:video.description,
         nickname: video.nickname,
         userId: video.userId,
@@ -237,7 +249,15 @@ export class VideoService {
         user,
         uploadId: body.uploadId,
       });
-      await this.videoRepository.save(video);
+      const savedVideo = await this.videoRepository.save(video);
+      const metadata = this.videoMetadataRepository.create({
+        creatorName: body.creatorName,
+        creatorTitle: body.creatorTitle,
+        thumbnailUrl: body.thumbnailUrl,
+        slug: body.slug,
+        video: savedVideo,
+      });
+      await this.videoMetadataRepository.save(metadata);
       return {
         message: '영상 등록 완료',
       };

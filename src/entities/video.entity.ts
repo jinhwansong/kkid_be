@@ -4,12 +4,14 @@ import {
   Entity,
   ManyToOne,
   OneToMany,
+  OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Comment } from './comment.entity';
 import { Like } from './like.entity';
 import { User } from './user.entity';
+import { VideoMetadata } from './videoMetadata.entity';
 
 @Entity({ schema: 'Jimmit', name: 'video' })
 export class Video {
@@ -46,4 +48,8 @@ export class Video {
   // 댓글 관계
   @OneToMany(() => Comment, (comment) => comment.video)
   comment: Comment[];
+
+  // 메타데이터
+  @OneToOne(() => VideoMetadata, (metadata) => metadata.video, { cascade: true })
+  metadata: VideoMetadata;
 }

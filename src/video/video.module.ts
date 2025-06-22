@@ -1,5 +1,6 @@
 import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
 import { Like, User, Video } from '@/entities';
+import { VideoMetadata } from '@/entities/videoMetadata.entity';
 import { MuxService } from '@/mux/mux.service';
 import { RedisService } from '@/redis/redis.service';
 import { UserModule } from '@/user/user.module';
@@ -10,7 +11,7 @@ import { VideoController } from './video.controller';
 import { VideoService } from './video.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Video, User, Like]), HttpModule,UserModule],
+  imports: [TypeOrmModule.forFeature([Video, User, Like,VideoMetadata]), HttpModule,UserModule],
   controllers: [VideoController],
   providers: [VideoService, RedisService, AuthVerificationService, MuxService],
   exports: [VideoService],
