@@ -212,7 +212,7 @@ export class VideoService {
       const ss = String(seconds).padStart(2, '0');
 
       // 결과: "HH:MM:SS"
-      const formatted = `${hh}:${mm}:${ss}`;
+      const formatted = hh === '00' ? `${mm}:${ss}` : `${hh}:${mm}:${ss}`;
 
       if (video) {
         video.playbackId = playbackId;
