@@ -129,6 +129,12 @@ export class VideoController {
     return this.videoService.getMyVideoTotal(targetUserId);
   }
 
+  @ApiOperation({ summary: '업로드 상태' })
+  @Get('status')
+  async getMuxStatus(@Query('uploadId') uploadId: string) {
+    return this.videoService.getAssetStatus(uploadId);
+      
+  }
 
   @ApiOperation({ summary: '영상 목록 상세' })
   @ApiResponse({
@@ -282,11 +288,6 @@ export class VideoController {
     return this.videoService.deleteVideo(videoId, userId.id);
   }
 
-  @ApiOperation({ summary: '업로드 상태' })
-   @Get('status')
-    async getMuxStatus(@Query('uploadId') uploadId: string) {
-      return this.videoService.getAssetStatus(uploadId);
-       
-    }
+  
 }
 
