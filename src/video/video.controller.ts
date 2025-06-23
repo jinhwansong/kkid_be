@@ -284,9 +284,9 @@ export class VideoController {
 
   @ApiOperation({ summary: '업로드 상태' })
    @Get('status')
-    async getMuxStatus(@Query('playbackId') playbackId: string) {
-      const status = await this.muxService.getAssetStatus(playbackId);
-      return { status };
+    async getMuxStatus(@Query('uploadId') uploadId: string) {
+      return this.videoService.getAssetStatus(uploadId);
+       
     }
 }
 

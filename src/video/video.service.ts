@@ -512,4 +512,10 @@ export class VideoService {
     throw new InternalServerErrorException('영상 삭제 중 오류가 발생했습니다.');
   }
 }
+
+  // 업로드 상태
+  async getAssetStatus(uploadId: string) {
+    const video = await this.videoRepository.findOne({ where: { uploadId } });
+    return { playbackId: video?.playbackId || null, status: video?.playbackId ? 'ready' : 'preparing' };
+  }
 }
