@@ -21,8 +21,13 @@ export class UserService {
         userId: info.id,
         profileImagePath: info.profileImagePath,
       });
-      await this.userRepository.save(user);
+    }else {
+      // 있으면 업데이트
+      user.username = info.username;
+      user.nickname = info.nickname;
+      user.userId = info.id;
+      user.profileImagePath = info.profileImagePath;
     }
-    return user;
+    return await this.userRepository.save(user);
   }
 }

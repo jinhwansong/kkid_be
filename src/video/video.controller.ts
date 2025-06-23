@@ -281,5 +281,12 @@ export class VideoController {
   ) {
     return this.videoService.deleteVideo(videoId, userId.id);
   }
+
+
+   @Get('status')
+    async getMuxStatus(@Query('playbackId') playbackId: string) {
+      const status = await this.muxService.getAssetStatus(playbackId);
+      return { status };
+    }
 }
 

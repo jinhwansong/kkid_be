@@ -1,7 +1,7 @@
 import { User } from '@/entities';
 import { CreateUserDto } from '@/video/dto/user.dto';
 import Mux from '@mux/mux-node';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as Sentry from '@sentry/node';
@@ -91,4 +91,18 @@ export class MuxService {
       throw new Error('Mux 영상 삭제에 실패했습니다.');
     }
   }
+
+  async getAssetStatus(playbackId: string) {
+    const allAssets = await this.video.assets.list();
+
+    const asset = allAssets.data.find((a) =>
+    a.playback_ids?.some((id) => id.id === playbackId)
+    );
+
+    if (!asset) {
+      throw new NotFoundException('Asset not found');
+    }
+
+    return asset.status;
+}
 }

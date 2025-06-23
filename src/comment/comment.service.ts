@@ -23,8 +23,8 @@ export class CommentService {
     ) {
         try {
             const currentPage = Math.max(1, page);
-             const pageSize = Math.max(1, Math.min(100, take));
-             const skip = (currentPage - 1) * pageSize;
+            const pageSize = Math.max(1, Math.min(100, take));
+            const skip = (currentPage - 1) * pageSize;
             const queryBuilder = this.commentRepository
                 .createQueryBuilder('comment')
                 .leftJoinAndSelect('comment.user', 'user')
@@ -34,7 +34,7 @@ export class CommentService {
             .skip(skip)
             .take(pageSize)
             .getManyAndCount();
-
+            
             const data = results.map(comment => ({
                 id: comment.id,
                 content: comment.content,
