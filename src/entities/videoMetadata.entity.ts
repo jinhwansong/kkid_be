@@ -13,7 +13,7 @@ export class VideoMetadata {
 
   @Column({ type: 'varchar', nullable: true })
   thumbnailUrl: string;
-  @Column({ type: 'varchar', nullable: true, unique: true })
+  @Column({ type: 'varchar', nullable: true })
   slug: number;
 
   @OneToOne(() => Video, { onDelete: 'CASCADE' })
