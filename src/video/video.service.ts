@@ -258,8 +258,17 @@ export class VideoService {
         video: savedVideo,
       });
       await this.videoMetadataRepository.save(metadata);
+
+
       return {
         message: '영상 등록 완료',
+        id: video.id,
+        title: video.title,
+        thumbnailUrl: video.thumbnailUrl,
+        nickname: video.user.nickname,
+        createdAt: video.createdAt,
+        viewCount: video.viewCount,
+        duration: video.duration
       };
     } catch (error) {
       Sentry.withScope((scope) => {
