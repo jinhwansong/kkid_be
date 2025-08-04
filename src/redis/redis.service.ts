@@ -14,7 +14,7 @@ export class RedisService {
     });
     this.client.connect();
   }
-  // 조회수용 유저 정보 저장 30분후 자동 삭제...
+  // 조회수용 유저 정보 저장 24시간 후 자동 삭제...
   async saveCount(key: string, value: string) {
     await this.client.set(key, value, { EX: 60 * 60 * 24 });
   }

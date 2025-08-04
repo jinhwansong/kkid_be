@@ -1,0 +1,925 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "tags": [
+          "App"
+        ]
+      }
+    },
+    "/video": {
+      "get": {
+        "operationId": "VideoController_getVideosWithPagination",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호 (1부터)",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "한 페이지당 항목 수",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "latest",
+                "popular"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "전체 영상 목록 리스트입니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/VideoListFlatDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "영상 목록을 불러오는 중 오류가 발생했습니다."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "전체 영상 목록 리스트",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/user": {
+      "get": {
+        "operationId": "VideoController_getMyVideos",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "description": "조회 대상 유저 ID (없으면 내 영상)",
+            "schema": {
+              "example": "abc123",
+              "type": "number"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호 (1부터)",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "한 페이지당 항목 수",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "order",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "enum": [
+                "latest",
+                "popular"
+              ],
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "유저가 업로드한 영상 목록 리스트입니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoListFlatDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증되지 않은 사용자"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "유저가 업로드한 영상 목록",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/user/count": {
+      "get": {
+        "operationId": "VideoController_getMyVideoTotal",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": false,
+            "in": "query",
+            "description": "조회 대상 유저 ID (없으면 내 영상)",
+            "schema": {
+              "example": "abc123",
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "유저가 업로드한 영상 개수",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "count": 12,
+                    "message": "업로드한 영상 개수를 조회했습니다."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증되지 않은 사용자"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "유저가 업로드한 영상 개수",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/status": {
+      "get": {
+        "operationId": "VideoController_getMuxStatus",
+        "parameters": [
+          {
+            "name": "uploadId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "업로드 상태",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/{videoId}": {
+      "get": {
+        "operationId": "VideoController_getVideosWithDetail",
+        "parameters": [
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "영상 목록 상세입니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoResponseDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "해당 영상이 존재하지 않습니다."
+          },
+          "500": {
+            "description": "영상 상세데이터를 불러오는 중 오류가 발생했습니다."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "영상 목록 상세",
+        "tags": [
+          "Video"
+        ]
+      },
+      "post": {
+        "operationId": "VideoController_viewCountVideos",
+        "parameters": [
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "description": "조회수 증가시킬 비디오 ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "x-forwarded-for",
+            "in": "header",
+            "description": "비회원 식별용 IP (선택, 자동 처리됨)",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "조회수 증가 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "조회수 처리 완료",
+                    "videoId": "3520e5b7-af1b-405c-af5c-b0511635c6fa",
+                    "viewCount": 42
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "유저 식별이 불가능합니다."
+          },
+          "401": {
+            "description": "인증되지 않은 사용자"
+          },
+          "404": {
+            "description": "존재하지 않는 영상입니다."
+          },
+          "500": {
+            "description": "조회수 처리 중 오류가 발생했습니다."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "조회수 증가",
+        "tags": [
+          "Video"
+        ]
+      },
+      "delete": {
+        "operationId": "VideoController_deleteVideo",
+        "parameters": [
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/like/{videoId}": {
+      "post": {
+        "operationId": "VideoController_toggleLike",
+        "parameters": [
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "좋아요 추가 또는 취소 처리 결과",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "좋아요",
+                    "liked": true,
+                    "likeCount": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증되지 않은 사용자"
+          },
+          "404": {
+            "description": "존재하지 않는 영상입니다."
+          },
+          "500": {
+            "description": "좋아요 처리 중 오류가 발생했습니다."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "영상 좋아요/취소",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/like-status/{videoId}": {
+      "get": {
+        "operationId": "VideoController_getLikeStatus",
+        "parameters": [
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "좋아요 여부 조회",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/uploadUrl": {
+      "post": {
+        "operationId": "VideoController_getUploadUrl",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Direct Upload용 Mux URL 발급",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MuxUploadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mux upload용 URL 발급",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/register": {
+      "post": {
+        "operationId": "VideoController_registerMuxVideo",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RegisterMuxVideoDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mux 영상 등록 성공",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VideoResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "Mux 업로드 완료 후 등록 요청",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/video/webhook/mux": {
+      "post": {
+        "operationId": "VideoController_muxWebHook",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "웹훅",
+        "tags": [
+          "Video"
+        ]
+      }
+    },
+    "/comment": {
+      "get": {
+        "operationId": "CommentController_getComment",
+        "parameters": [
+          {
+            "name": "videoId",
+            "required": true,
+            "in": "query",
+            "description": "영상 UUID",
+            "schema": {
+              "example": "xxx-uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "페이지 번호 (1부터)",
+            "schema": {
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "take",
+            "required": false,
+            "in": "query",
+            "description": "한 페이지당 항목 수",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "영상에 달린 댓글 리스트",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/GetCommentDto"
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "영상에 달린 댓글 리스트를 불러오는 중 오류가 발생했습니다."
+          }
+        },
+        "summary": "댓글 리스트",
+        "tags": [
+          "Comment"
+        ]
+      },
+      "post": {
+        "operationId": "CommentController_createComment",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCommentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "댓글 쓰기입니다.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CreateCommentDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "인증되지 않은 사용자"
+          },
+          "404": {
+            "description": "존재하지 않는 영상입니다."
+          },
+          "500": {
+            "description": "댓글 쓰기 중 오류가 발생했습니다."
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "댓글 쓰기",
+        "tags": [
+          "Comment"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "jammit api문서",
+    "description": "jammit 개발을 위한 API 문서입니다.\n\n🔗 OpenAPI 명세 다운로드: /openapi-spec.json",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "access-token": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http",
+        "name": "Authorization",
+        "description": "JWT access token",
+        "in": "header"
+      }
+    },
+    "schemas": {
+      "VideoListDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "b1a8f3e1-3b0f-4e9b-98a2-c4f0e6d3a3b4",
+            "description": "영상 UUID"
+          },
+          "title": {
+            "type": "string",
+            "example": "재미있게 합주한 아이스크림",
+            "description": "비디오 제목"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "example": "https://picsum.photos/200/300",
+            "description": "썸네일 이미지 URL"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2023-05-09T12:34:56Z",
+            "description": "생성일"
+          },
+          "nickname": {
+            "type": "string",
+            "example": "퉁퉁퉁퉁퉁퉁사후르",
+            "description": "사용자 닉네임"
+          },
+          "duration": {
+            "type": "string",
+            "example": "00:00:30",
+            "description": "비디오 길이"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "thumbnailUrl",
+          "createdAt",
+          "nickname",
+          "duration"
+        ]
+      },
+      "VideoListFlatDto": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "number"
+          },
+          "take": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "totalPages": {
+            "type": "number"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VideoListDto"
+            }
+          }
+        },
+        "required": [
+          "page",
+          "take",
+          "total",
+          "totalPages",
+          "data"
+        ]
+      },
+      "VideoResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "b1a8f3e1-3b0f-4e9b-98a2-c4f0e6d3a3b4",
+            "description": "영상 UUID"
+          },
+          "title": {
+            "type": "string",
+            "example": "재미있게 합주한 아이스크림",
+            "description": "비디오 제목"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "example": "https://picsum.photos/200/300",
+            "description": "썸네일 이미지 URL"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2023-05-09T12:34:56Z",
+            "description": "생성일"
+          },
+          "nickname": {
+            "type": "string",
+            "example": "퉁퉁퉁퉁퉁퉁사후르",
+            "description": "사용자 닉네임"
+          },
+          "duration": {
+            "type": "string",
+            "example": "00:00:30",
+            "description": "비디오 길이"
+          },
+          "description": {
+            "type": "string",
+            "example": "다같이 아이스크림 췃어요",
+            "description": "비디오 설명"
+          },
+          "playbackId": {
+            "type": "string",
+            "example": "C52Fu8r79UfIp1GX02jE8lnLBE4th5E2TwC7YfTaYnwU",
+            "description": "비디오 재생 URL"
+          },
+          "viewCount": {
+            "type": "number",
+            "example": 103,
+            "description": "조회수"
+          },
+          "likeCount": {
+            "type": "number",
+            "example": 1,
+            "description": "유저 고유아이디"
+          },
+          "commentCount": {
+            "type": "number",
+            "example": 4,
+            "description": "댓글 수"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "thumbnailUrl",
+          "createdAt",
+          "nickname",
+          "duration",
+          "description",
+          "playbackId",
+          "viewCount",
+          "likeCount",
+          "commentCount"
+        ]
+      },
+      "MuxUploadResponseDto": {
+        "type": "object",
+        "properties": {
+          "uploadUrl": {
+            "type": "string",
+            "example": "https://storage.mux.com/abc123...",
+            "description": "프론트에서 사용할 Direct Upload URL"
+          },
+          "uploadId": {
+            "type": "string",
+            "example": "upload-xyz456",
+            "description": "Mux 업로드 식별자 ID (uploadId)"
+          }
+        },
+        "required": [
+          "uploadUrl",
+          "uploadId"
+        ]
+      },
+      "RegisterMuxVideoDto": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "재미있게 합주한 아이스크림",
+            "description": "비디오 제목"
+          },
+          "description": {
+            "type": "string",
+            "example": "다같이 아이스크림 췃어요",
+            "description": "비디오 설명"
+          },
+          "uploadId": {
+            "type": "string",
+            "example": "upload-xyz456",
+            "description": "업로드 아이디"
+          },
+          "thumbnailUrl": {
+            "type": "string",
+            "example": "https://picsum.photos/200/300",
+            "description": "썸네일 이미지 URL"
+          },
+          "creatorTitle": {
+            "type": "string",
+            "example": "재미있게 합주한 아이스크림",
+            "description": "비디오 제목"
+          },
+          "creatorName": {
+            "type": "string",
+            "example": "트탈라레오",
+            "description": "사용자 이름"
+          },
+          "slug": {
+            "type": "number",
+            "example": 1,
+            "description": "상세페이지 아이디"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "uploadId",
+          "thumbnailUrl",
+          "creatorTitle",
+          "creatorName",
+          "slug"
+        ]
+      },
+      "GetCommentDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "abc123-uuid",
+            "description": "댓글 ID"
+          },
+          "userId": {
+            "type": "string",
+            "example": "u123",
+            "description": "작성자 유저 ID"
+          },
+          "nickname": {
+            "type": "string",
+            "example": "김코드",
+            "description": "작성자 닉네임"
+          },
+          "profileImage": {
+            "type": "string",
+            "example": "https://cdn.example.com/profile.jpg",
+            "description": "작성자 프로필 이미지"
+          },
+          "content": {
+            "type": "string",
+            "example": "이 영상 너무 좋아요!",
+            "description": "댓글 내용"
+          },
+          "createdAt": {
+            "format": "date-time",
+            "type": "string",
+            "example": "2025-06-20T12:34:56.000Z",
+            "description": "작성일시"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "nickname",
+          "profileImage",
+          "content",
+          "createdAt"
+        ]
+      },
+      "CreateCommentDto": {
+        "type": "object",
+        "properties": {
+          "videoId": {
+            "type": "string",
+            "example": "b1a8f3e1-3b0f-4e9b-98a2-c4f0e6d3a3b4",
+            "description": "영상 UUID"
+          },
+          "content": {
+            "type": "string",
+            "example": "탕탕후루후루 탕탕 후루루루루",
+            "description": "댓글내용"
+          }
+        },
+        "required": [
+          "videoId",
+          "content"
+        ]
+      }
+    }
+  }
+}
