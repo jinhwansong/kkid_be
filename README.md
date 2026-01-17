@@ -1,98 +1,167 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# JAMMIT 영상 업로드 서비스
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+> 프론트엔드 개발자 관점에서 사용자 경험을 개선하기 위해 영상 업로드 백엔드를 직접 설계·구현했습니다.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## 프로젝트 개요
 
-## Description
+**배경**:  
+JAMMIT 프로젝트에서 프론트엔드 개발을 담당했습니다. 영상 업로드 기능 구현 중, 백엔드 팀원이 영상 도메인 작업이 어려운 상황이었습니다. 기존 서버-중계 방식으로는 대용량 영상 업로드 시 사용자가 긴 대기 시간을 겪을 것으로 예상되어, UX 개선을 위해 NestJS 백엔드를 직접 설계·구현했습니다.
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+**기간**: 2024.03 ~ 2024.05  
+**포지션**: 프론트엔드 개발 (+ 영상 업로드 백엔드 설계)  
+**기술 스택**: React, NestJS, TypeScript, Mux, Redis, MySQL
 
-## Project setup
+**담당 영역**:
+- ✅ 프론트엔드 (영상 업로드 UI, 상태 관리, 진행률 표시)
+- ✅ 백엔드 API 설계 (NestJS - 영상 업로드, 메타데이터 관리, 댓글, 조회수)
+- ❌ 인증/인가 (Spring Boot, 백엔드 팀원 담당)
 
-```bash
-$ npm install
+---
+
+## 해결하고자 한 문제
+
+### 문제 상황: 대용량 영상 업로드의 UX 병목
+
+초기 설계안은 프론트엔드 → 서버 → 스토리지 방식이었습니다. 하지만 이 구조는:
+
+**사용자가 겪는 문제**:
+- **긴 대기 시간**: 수백 MB 영상이 서버를 거치면서 업로드 완료까지 수 분 소요
+- **진행률 표시 불가**: 서버 내부 처리로 인해 실시간 업로드 %를 보여줄 수 없음
+- **업로드 실패 시 재시도**: 네트워크 끊김 시 처음부터 다시 업로드해야 함
+
+**기술적 문제**:
+- 서버 메모리 과소모 (대용량 파일 처리)
+- 프론트엔드 → 서버 → 스토리지 이중 전송으로 인한 네트워크 비용
+
+이는 합주 영상을 공유하는 JAMMIT의 핵심 경험을 저해하는 요소였습니다.
+
+---
+
+## 해결 방법: Direct Upload 패턴
+
+### 설계 결정
+
+프론트엔드에서 Mux 스토리지로 직접 업로드하는 구조로 변경했습니다.
+
+**업로드 플로우**:
+
+```
+프론트엔드 → 서버: 업로드 URL 요청
+서버 → Mux: Direct Upload URL 발급
+프론트엔드 → Mux: 파일 직접 업로드 (진행률 표시)
+프론트엔드 → 서버: 메타데이터 등록
+Mux → 서버: 인코딩 완료 Webhook
+프론트엔드 → 서버: 상태 조회 (폴링)
 ```
 
-## Compile and run the project
+### 이 구조를 선택한 이유
 
-```bash
-# development
-$ npm run start
+**프론트엔드 UX 개선**:
+- ✅ 브라우저 네이티브 진행률 이벤트로 실시간 업로드 % 표시
+- ✅ 네트워크 중단 시 자동 재개 (Mux SDK 지원)
+- ✅ 서버 응답 지연 없이 즉각적인 피드백
 
-# watch mode
-$ npm run start:dev
+**기술적 이점**:
+- 서버 부하 제거: 파일이 서버를 거치지 않아 메모리 절약
+- 확장성: 동시 업로드 수 증가에도 서버 리소스 영향 없음
 
-# production mode
-$ npm run start:prod
+---
+
+## 프론트엔드 개발 중 마주한 문제들
+
+### 1. 비동기 인코딩으로 인한 null 상태 처리
+
+**문제**:  
+영상 등록 직후 상세 페이지로 이동하면 `playbackId`가 `null`이어서 영상을 재생할 수 없었습니다.
+
+**원인**:  
+Mux 인코딩은 비동기로 처리되며(수 분~수십 분 소요), Webhook으로 완료 시점을 알려줍니다.
+
+**프론트엔드 해결 방법**:
+- `playbackId === null`이면 "인코딩 중..." UI 표시
+- 상태 조회 API로 3초마다 폴링
+- 인코딩 완료되면 영상 플레이어로 전환
+
+**백엔드 API 설계**:
+```json
+// POST /video/register 응답
+{
+  "id": "video-123",
+  "title": "영상 제목",
+  "playbackId": null,    // 인코딩 전
+  "thumbnailUrl": null,  // 인코딩 전
+  "duration": null
+}
 ```
 
-## Run tests
+API 응답에 nullable 필드를 명시하고, Swagger 문서에 상태별 예시를 추가해 팀원과의 협업 시 혼란을 방지했습니다.
 
-```bash
-# unit tests
-$ npm run test
+---
 
-# e2e tests
-$ npm run test:e2e
+### 2. 비회원 조회수 처리
 
-# test coverage
-$ npm run test:cov
-```
+**문제**:  
+비회원도 조회수를 카운트해야 하는데, 로그인하지 않은 사용자의 중복 조회를 어떻게 방지할까?
 
-## Deployment
+**해결**:  
+- 회원: `userId`로 Redis 키 생성
+- 비회원: IP 주소로 `guest:{ip}` 형식의 키 생성
+- `AuthOptionalGuard`로 회원/비회원을 동일한 로직으로 처리
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+**한계 인지**:  
+IP 기반 식별은 공유 IP나 VPN 환경에서 완벽하지 않지만, 대부분의 경우 효과적입니다.
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+---
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+### 3. Webhook 실패 대응
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+**문제**:  
+Mux Webhook이 네트워크 오류로 실패하면 `playbackId`가 영구적으로 업데이트되지 않아 영상 재생이 불가능해집니다.
 
-## Resources
+**해결**:  
+- 프론트엔드: 상태 조회 API로 주기적 폴링
+- 백엔드: Webhook HMAC 서명 검증으로 보안 강화
+- 30분 후에도 인코딩이 완료되지 않으면 관리자에게 알림
 
-Check out a few resources that may come in handy when working with NestJS:
+---
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+## 기술 스택 및 구현
 
-## Support
+### 프론트엔드
+- React, TypeScript
+- TanStack Query (상태 관리)
+- Mux SDK (Direct Upload)
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+### 백엔드
+- NestJS, TypeORM
+- Redis (조회수 중복 방지)
+- Mux API (영상 스트리밍)
 
-## Stay in touch
+### 주요 구현
+- **DTO 기반 입력 검증**: `class-validator`로 타입 안정성 보장
+- **Swagger 문서화**: 프론트엔드 팀원과의 API 협업 지원
+- **Webhook HMAC 검증**: 외부 요청 보안 강화
+- **Redis 캐싱**: 조회수 중복 방지 (회원/비회원 통합 처리)
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+---
 
-## License
+## 배운 점 및 한계
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+### 배운 점
+
+1. **비동기 처리의 중요성**  
+   프론트엔드에서 로딩 상태, 에러 상태, 성공 상태를 명확히 구분하는 것이 UX의 핵심입니다. 영상 인코딩처럼 오래 걸리는 작업은 폴링이나 WebSocket으로 상태를 투명하게 보여줘야 합니다.
+
+2. **API 설계의 중요성**  
+   nullable 필드를 응답 스키마에 명시하고 Swagger로 문서화하면 프론트엔드 팀원과의 협업 시 혼란을 크게 줄일 수 있습니다. "이 필드는 인코딩 완료 전에 null일 수 있습니다"라는 한 줄이 런타임 에러를 방지합니다.
+
+3. **사용자 관점에서 생각하기**  
+   "기술적으로 가능한가"보다 "사용자가 어떻게 느낄 것인가"를 먼저 고민하면 더 나은 설계가 나옵니다. Direct Upload 패턴을 선택한 이유도 "진행률을 보여주고 싶었기 때문"입니다.
+
+### 한계 및 개선 방향
+
+- **테스트 코드 부족**: 시간 제약으로 단위 테스트를 작성하지 못했습니다. 실제 프로덕션 환경에서는 API 엔드포인트별 테스트가 필수입니다.
+- **대규모 트래픽 미경험**: 실제 서비스 운영 경험이 없어 캐싱 전략, 트랜잭션 관리, DB 쿼리 최적화에 대한 실전 경험이 부족합니다.
+- **Webhook 신뢰성**: 현재는 폴링으로 보완하고 있지만, 프로덕션 환경에서는 재시도 큐나 이벤트 소싱 패턴을 고려해야 합니다.
+
+---

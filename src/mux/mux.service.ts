@@ -23,14 +23,15 @@ export class MuxService {
       this.video = this.mux.video;
     } catch (error) {
       Sentry.withScope((scope) => {
-      scope.setTag('task', 'mux-init');
-      scope.setContext('Mux 초기화 실패', {
-        이유: '환경 변수 누락 또는 잘못된 토큰',
-      });
-      Sentry.captureException(error);
+        scope.setTag('task', 'mux-init');
+        scope.setContext('Mux 초기화 실패', {
+          이유: '환경 변수 누락 또는 잘못된 토큰',
+        });
+        Sentry.captureException(error);
       });
     }
   }
+
   // direct upload용 URL 발급
   async createDirectUpload(info: CreateUserDto): Promise<{
     uploadUrl: string;
@@ -46,8 +47,8 @@ export class MuxService {
         user = await this.userRepository.create({
           email: info.email,
           username: info.username,
-          nickname:info.nickname,
-          userId:info.id
+          nickname: info.nickname,
+          userId: info.id,
         });
         await this.userRepository.save(user);
       }
@@ -56,11 +57,14 @@ export class MuxService {
         new_asset_settings: {
           playback_policy: ['public'],
         },
-        cors_origin: process.env.NODE_ENV === 'production' ? process.env.FRONTEND_URL_NEXT : process.env.FRONTEND_URL,
+        cors_origin:
+          process.env.NODE_ENV === 'production'
+            ? process.env.FRONTEND_URL_NEXT
+            : process.env.FRONTEND_URL,
       });
       return { uploadUrl: upload.url, uploadId: upload.id };
     } catch (error) {
-        Sentry.withScope((scope) => {
+      Sentry.withScope((scope) => {
         scope.setTag('task', 'video-upload');
         scope.setExtra('nickname', info.nickname);
         scope.setContext('업로드 URL 생성 실패', {
@@ -73,12 +77,15 @@ export class MuxService {
     }
   }
 
-  async deleteAsset(assetId: string, info: { email: string; nickname: string }) {
+  async deleteAsset(
+    assetId: string,
+    info: { email: string; nickname: string },
+  ) {
     try {
       await this.mux.video.assets.delete(assetId);
       return { success: true };
     } catch (error) {
-       Sentry.withScope((scope) => {
+      Sentry.withScope((scope) => {
         scope.setTag('task', 'video-delete');
         scope.setExtra('nickname', info.nickname);
         scope.setContext('Mux 영상 삭제 실패', {
@@ -91,6 +98,4 @@ export class MuxService {
       throw new Error('Mux 영상 삭제에 실패했습니다.');
     }
   }
-
-
 }
