@@ -4,7 +4,6 @@ import { RedisService } from '@/redis/redis.service';
 import { UserService } from '@/user/user.service';
 import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as Sentry from '@sentry/node';
 import * as crypto from 'crypto';
 import dayjs from 'dayjs';
 import { Repository } from 'typeorm';
@@ -74,14 +73,7 @@ export class VideoService {
 
 
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'getVideosWithDetail');
-        scope.setExtra('videoId', videoId);
-        scope.setContext('상세 영상 에러', {
-          메시지: '영상 상세를 불러오는 중 오류',
-        });
-        Sentry.captureException(error);
-      });
+      console.error('영상 상세 조회 오류:', error);
       throw new BadRequestException(
         '영상 상세데이터를 불러오는 중 오류가 발생했습니다.',
       );
@@ -147,14 +139,7 @@ export class VideoService {
         likeCount: Number(likeCount),
       };
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'toggleLike');
-        scope.setExtra('videoId', videoId);
-        scope.setContext('좋아요 에러', {
-          메시지: '좋아요 처리 중 오류 발생',
-        });
-        Sentry.captureException(error);
-      });
+      console.error('좋아요 처리 오류:', error);
       throw new BadRequestException('좋아요 처리 중 오류가 발생했습니다.');
     }
   }
@@ -196,7 +181,7 @@ export class VideoService {
       Buffer.from(provided, 'hex')
     );
     if (!isValid) {
-      Sentry.captureMessage('MUX Webhook Signature Invalid', { level: 'warning' });
+      console.warn('MUX Webhook Signature Invalid');
       return res.status(403).send('Invalid signature');
     }
 
@@ -271,14 +256,7 @@ export class VideoService {
         duration: video.duration
       };
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'registerMuxVideo');
-        scope.setExtra('user', info.email);
-        scope.setContext('Mux 등록 에러', {
-          메시지: '영상 등록 중 오류',
-        });
-        Sentry.captureException(error);
-      });
+      console.error('영상 등록 오류:', error);
       throw new InternalServerErrorException(
         '영상 등록 중 오류가 발생했습니다.',
       );
@@ -323,15 +301,7 @@ export class VideoService {
         viewCount: video.viewCount,
       };
     } catch (error) {
-      console.log("error",error)
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'viewCountVideos');
-        scope.setExtra('videoId', videoId);
-        scope.setContext('조회수 처리 에러', {
-          메시지: '조회수 처리 중 오류 발생',
-        });
-        Sentry.captureException(error);
-      });
+      console.error('조회수 처리 오류:', error);
       throw new BadRequestException('조회수 처리 중 오류가 발생했습니다.');
     }
   }
@@ -386,14 +356,7 @@ export class VideoService {
         weekTopVideo
       };
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'getVideosWithPagination');
-        scope.setExtra('params', { limit, page, order });
-        scope.setContext('영상 목록 에러', {
-          메시지: '영상 목록을 불러오는 중 오류가 발생했습니다.',
-        });
-        Sentry.captureException(error);
-      });
+      console.error('영상 목록 조회 오류:', error);
       throw new BadRequestException('영상 목록을 불러오는 중 오류가 발생했습니다.');
 
     }
@@ -445,14 +408,7 @@ export class VideoService {
           message: '유저 영상 목록을 조회했습니다.',
         };
       } catch (error) {
-        Sentry.withScope((scope) => {
-          scope.setTag('method', 'getMyVideos');
-          scope.setExtra('userId', userInfo);
-          scope.setContext('내 영상 목록 에러', {
-            메시지: '내가 업로드한 영상 목록을 불러오는 중 오류',
-          });
-          Sentry.captureException(error);
-        });
+        console.error('내 영상 목록 조회 오류:', error);
         throw new BadRequestException(
           '영상 목록을 불러오는 중 오류가 발생했습니다.',
         );
@@ -477,11 +433,7 @@ export class VideoService {
       message: '업로드한 영상 개수를 조회했습니다.',
     };
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'getMyVideoCount');
-        scope.setExtra('userId', userInfo);
-        Sentry.captureException(error);
-      });
+      console.error('영상 개수 조회 오류:', error);
       throw new BadRequestException(
         '영상 개수를 불러오는 중 오류가 발생했습니다.',
       );
@@ -508,16 +460,7 @@ export class VideoService {
 
     return { message: '영상이 삭제되었습니다.' };
   } catch (error) {
-    Sentry.withScope((scope) => {
-      scope.setTag('task', 'video-delete');
-      scope.setExtra('videoId', video.id);
-      scope.setUser({ email: video.user.email });
-      scope.setContext('영상 삭제 실패', {
-        이유: 'Mux 삭제 혹은 DB 삭제 중 오류',
-        assetId: video.assetId,
-      });
-      Sentry.captureException(error);
-    });
+    console.error('영상 삭제 오류:', error);
     throw new InternalServerErrorException('영상 삭제 중 오류가 발생했습니다.');
   }
 }

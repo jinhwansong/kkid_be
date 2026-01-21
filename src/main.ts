@@ -2,7 +2,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import * as Sentry from '@sentry/node';
 import * as bodyParser from 'body-parser';
 import dotenv from 'dotenv';
 import { AppModule } from './app.module';
@@ -17,12 +16,6 @@ declare const module: NodeJS.Module & {
   };
 };
 dotenv.config();
-
-Sentry.init({
-  dsn: process.env.SENTRY_DSN,
-  environment: process.env.NODE_ENV || 'development',
-  tracesSampleRate: 1.0,
-});
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);

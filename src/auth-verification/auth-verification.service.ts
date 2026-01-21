@@ -1,7 +1,6 @@
 import { HttpService } from '@nestjs/axios';
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as Sentry from '@sentry/node';
 import { firstValueFrom } from 'rxjs';
 
 @Injectable()
@@ -18,15 +17,7 @@ export class AuthVerificationService {
       }));
       return data
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('method', 'verifyTokenAndGetUser');
-        scope.setExtra('token', token);
-        scope.setContext('인증 실패', {
-          이유: 'Spring 서버에서 토큰 인증 실패ㅠㅠ',
-          URL: backUrl,
-        });
-        Sentry.captureException(error);
-      });
+      console.error('인증 실패:', error);
       throw new UnauthorizedException('인증되지 않은 사용자');
     }
   }

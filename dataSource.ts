@@ -6,9 +6,9 @@ import * as Entities from './src/entities';
 dotenv.config();
 
 const dataSource = new DataSource({
-  type: 'mysql',
+  type: 'postgres',
   host: process.env.DB_HOST,
-  port: 3306,
+  port: parseInt(process.env.DB_PORT || '5432'),
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_DATABASE,
@@ -16,16 +16,14 @@ const dataSource = new DataSource({
   migrations: [join(__dirname, 'src/migrations/**/*{.ts,.js}')],
   migrationsRun: process.env.NODE_ENV === 'production' ? false : true,
   migrationsTableName: 'migrations',
-  charset: 'utf8mb4_general_ci',
   // 직접 만들고 db에 만들때 처음에 만들때만 true로
   synchronize: process.env.TYPEORM_SYNCHRONIZE === 'true',
-  poolSize: 20,
   logging: process.env.NODE_ENV === 'production' ? false : true,
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   extra: {
-    connectionLimit: 10, // 동시 연결 수 제한
-    connectTimeout: 60000, // 연결 시도 제한 시간 (ms)
-    enableKeepAlive: true, // TCP Keep-Alive 활성화
-    keepAliveInitialDelay: 30000, // Keep-Alive 초기 지연 시간 (ms)
+    max: 20, // 최대 연결 수
+    connectionTimeoutMillis: 60000, // 연결 시도 제한 시간 (ms)
+    idleTimeoutMillis: 30000, // 유휴 연결 타임아웃 (ms)
   },
 });
 

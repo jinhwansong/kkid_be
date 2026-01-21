@@ -4,7 +4,6 @@ import Mux from '@mux/mux-node';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as Sentry from '@sentry/node';
 import { Repository } from 'typeorm';
 
 @Injectable()
@@ -22,13 +21,7 @@ export class MuxService {
       this.mux = new Mux({ tokenId, tokenSecret });
       this.video = this.mux.video;
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('task', 'mux-init');
-        scope.setContext('Mux 초기화 실패', {
-          이유: '환경 변수 누락 또는 잘못된 토큰',
-        });
-        Sentry.captureException(error);
-      });
+      console.error('Mux 초기화 실패:', error);
     }
   }
 
@@ -64,15 +57,7 @@ export class MuxService {
       });
       return { uploadUrl: upload.url, uploadId: upload.id };
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('task', 'video-upload');
-        scope.setExtra('nickname', info.nickname);
-        scope.setContext('업로드 URL 생성 실패', {
-          이유: 'Mux API 응답 실패',
-          사용자: info.email,
-        });
-        Sentry.captureException(error);
-      });
+      console.error('업로드 URL 생성 실패:', error);
       throw new Error('업로드 URL을 생성하는 데 실패했습니다.');
     }
   }
@@ -85,16 +70,7 @@ export class MuxService {
       await this.mux.video.assets.delete(assetId);
       return { success: true };
     } catch (error) {
-      Sentry.withScope((scope) => {
-        scope.setTag('task', 'video-delete');
-        scope.setExtra('nickname', info.nickname);
-        scope.setContext('Mux 영상 삭제 실패', {
-          이유: 'Mux API 응답 실패',
-          사용자: info.email,
-          assetId,
-        });
-        Sentry.captureException(error);
-      });
+      console.error('Mux 영상 삭제 실패:', error);
       throw new Error('Mux 영상 삭제에 실패했습니다.');
     }
   }

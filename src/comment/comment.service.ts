@@ -3,7 +3,6 @@ import { UserService } from '@/user/user.service';
 import { CreateUserDto } from '@/video/dto/user.dto';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import * as Sentry from '@sentry/node';
 import { Repository } from 'typeorm';
 import { CreateCommentDto } from './dto/comment.dto';
 
@@ -55,14 +54,7 @@ export class CommentService {
                 message: '영상에 달린 댓글 리스트를 조회했습니다.',
             };
         } catch (error) {
-            Sentry.withScope((scope) => {
-                scope.setTag('method', 'getComment');
-                scope.setExtra('params', { take, page });
-                scope.setContext('영상 목록 에러', {
-                    메시지: '영상 목록을 불러오는 중 오류가 발생했습니다.',
-                });
-                Sentry.captureException(error);
-            });
+            console.error('댓글 리스트 조회 오류:', error);
             throw new BadRequestException('영상에 달린 댓글 리스트를 불러오는 중 오류가 발생했습니다.');
         }
     }
@@ -84,15 +76,7 @@ export class CommentService {
                 profileImagePath: user.profileImagePath,
              }
         } catch (error) {
-            console.log('error',error)
-            Sentry.withScope((scope) => {
-                scope.setTag('method', 'getComment');
-                scope.setExtra('params', { body });
-                scope.setContext('댓글 쓰기 에러', {
-                    메시지: '댓글 쓰기 중 오류가 발생했습니다.',
-                });
-                Sentry.captureException(error);
-            });
+            console.error('댓글 쓰기 오류:', error);
             throw new BadRequestException('댓글 쓰기 중 오류가 발생했습니다.');
         }
     }

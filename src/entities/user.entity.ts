@@ -36,8 +36,7 @@ export class User {
   })
   nickname: string;
   @Column({
-    type: 'varchar',
-    length: 30,
+    type: 'integer',
     unique: true,
     nullable: false,
   })
