@@ -13,7 +13,7 @@ import { Like } from './like.entity';
 import { User } from './user.entity';
 import { VideoMetadata } from './videoMetadata.entity';
 
-@Entity({ schema: 'Jimmit', name: 'video' })
+@Entity({ name: 'video' })
 export class Video {
   @PrimaryGeneratedColumn('uuid')
   id: string;

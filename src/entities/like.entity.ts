@@ -3,7 +3,7 @@ import { User } from "./user.entity";
 import { Video } from "./video.entity";
 
 
-@Entity({ schema: 'Jimmit', name: 'like' })
+@Entity({ name: 'like' })
 // 좋아요 방지가 된데요....
 @Unique(['user', 'video'])
 export class Like {

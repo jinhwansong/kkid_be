@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from "typeorm";
 import { Video } from "./video.entity";
 
-@Entity({ schema: 'Jimmit', name: 'video_metadata' })
+@Entity({ name: 'video_metadata' })
 export class VideoMetadata {
   @PrimaryGeneratedColumn('uuid')
   id: string;

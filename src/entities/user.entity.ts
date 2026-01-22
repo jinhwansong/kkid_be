@@ -10,7 +10,7 @@ import { Comment } from './comment.entity';
 import { Like } from './like.entity';
 import { Video } from './video.entity';
 
-@Entity({ schema: 'Jimmit', name: 'user' })
+@Entity({ name: 'user' })
 export class User {
   @PrimaryGeneratedColumn('uuid')
   id: string;
