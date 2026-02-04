@@ -55,21 +55,23 @@ export class VideoService {
       if (!video) {
         throw new NotFoundException('해당 영상이 존재하지 않습니다.');
       }
+      const raw = video as Record<string, unknown>;
+      console.log('raw', raw);
       return {
-        id: video.id,
-        title: video.title,
-        playbackId: video.playbackId,
-        viewCount: Number(video.viewCount),
-        creatorThumbnailUrl:video.thumbnailUrl,
-        creatorName:video.creatorName,
-        creatorTitle:video.creatorTitle,
-        slug:video.slug,
-        description:video.description,
-        nickname: video.nickname,
-        userId: video.userId,
-        thumbnailUrl:video.thumbnailUrl,
-        createdAt: video.createdAt,
-      }
+        id: raw.id,
+        title: raw.title,
+        playbackId: raw.playbackid,
+        viewCount: Number(raw.viewcount ?? 0),
+        creatorThumbnailUrl: raw.thumbnailurl,
+        creatorName: raw.creatorname,
+        creatorTitle: raw.creatortitle,
+        slug: raw.slug,
+        description: raw.description,
+        nickname: raw.nickname,
+        userId: raw.userid,
+        thumbnailUrl: raw.thumbnailurl,
+        createdAt: raw.createdat,
+      };
 
 
     } catch (error) {
@@ -127,16 +129,16 @@ export class VideoService {
           .values({ user: { id: user.id }, video: { id: videoId } })
           .execute();
       }
-      const { likeCount } = await this.likeRepository
+      const likeRaw = await this.likeRepository
         .createQueryBuilder('like')
         .select('COUNT(*)', 'likeCount')
         .where('like.videoId = :videoId', { videoId })
         .getRawOne();
-      // execute 데이터를 바꿀때 사용한당
+      const rawLike = likeRaw as Record<string, unknown>;
       return {
         message: likeEx ? '좋아요 취소' : '좋아요',
         liked: !likeEx,
-        likeCount: Number(likeCount),
+        likeCount: Number(rawLike?.likecount ?? rawLike?.likeCount ?? 0),
       };
     } catch (error) {
       console.error('좋아요 처리 오류:', error);
