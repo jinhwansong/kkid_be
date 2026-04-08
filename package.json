@@ -23,15 +23,17 @@
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "typeorm": "ts-node --require tsconfig-paths/register ./node_modules/typeorm/cli.js",
-    "db:create": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs db:create -d ./dataSource.ts",
-    "db:drop": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs db:drop -d ./dataSource.ts",
-    "seed": "ts-node ./node_modules/typeorm-extension/bin/cli.cjs seed:run -d ./dataSource.ts",
-    "schema:drop": "ts-node ./node_modules/typeorm/cli.js schema:drop",
-    "schema:sync": "ts-node ./node_modules/typeorm/cli.js schema:sync",
+    "sql:run": "ts-node --require tsconfig-paths/register scripts/run-sql.ts",
+    "seed:gathering": "npm run sql:run -- db/seed/gathering-seed.sql",
+    "seed:user-review": "npm run sql:run -- db/seed/user-review-seed.sql",
+    "seed:cleanup": "npm run sql:run -- db/seed/cleanup.sql",
+    "seed:reset-data": "npm run sql:run -- db/seed/reset-all-data.sql",
+    "seed:bootstrap-owner": "npm run sql:run -- db/seed/bootstrap-jammit-owner.sql",
+    "seed:fresh": "npm run seed:reset-data && npm run seed:bootstrap-owner && npm run seed:gathering && npm run seed:user-review",
     "db:migrate": "npm run typeorm migration:run -- -d ./dataSource.ts",
     "db:migrate:revert": "npm run typeorm migration:revert -- -d ./dataSource.ts",
-    "db:create-migration": "npm run typeorm migration:create -- ./src/migrations/",
-    "db:generate-migration": "npm run typeorm migration:generate -- ./src/migrations -d ./dataSource.ts"
+    "db:create-migration": "npm run typeorm migration:create -- ./src/database/migrations/",
+    "db:generate-migration": "npm run typeorm migration:generate -- ./src/database/migrations -d ./dataSource.ts"
   },
   "dependencies": {
     "@mux/mux-node": "^11.1.0",
@@ -39,10 +41,14 @@
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
     "@nestjs/core": "^11.0.1",
+    "@nestjs/jwt": "^11.0.2",
+    "@nestjs/passport": "^11.0.5",
     "@nestjs/platform-express": "^11.0.1",
+    "@nestjs/schedule": "^6.1.1",
     "@nestjs/swagger": "^11.2.0",
     "@nestjs/typeorm": "^11.0.0",
     "axios": "^1.13.2",
+    "bcrypt": "^6.0.0",
     "body-parser": "^2.2.2",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.2",
@@ -50,12 +56,13 @@
     "dayjs": "^1.11.13",
     "ioredis": "^5.6.1",
     "multer": "^2.0.2",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
     "pg": "^8.11.3",
     "redis": "^4.7.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.24",
-    "typeorm-extension": "^3.7.1",
     "validator": "^13.15.26"
   },
   "devDependencies": {
@@ -66,10 +73,12 @@
     "@nestjs/testing": "^11.0.1",
     "@swc/cli": "^0.6.0",
     "@swc/core": "^1.10.7",
+    "@types/bcrypt": "^6.0.0",
     "@types/express": "^5.0.2",
     "@types/jest": "^29.5.14",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.7",
+    "@types/passport-jwt": "^4.0.1",
     "@types/supertest": "^6.0.2",
     "cross-env": "^7.0.3",
     "eslint": "^9.18.0",
@@ -99,6 +108,9 @@
     "testRegex": ".*\\.spec\\.ts$",
     "transform": {
       "^.+\\.(t|j)s$": "ts-jest"
+    },
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/$1"
     },
     "collectCoverageFrom": [
       "**/*.(t|j)s"

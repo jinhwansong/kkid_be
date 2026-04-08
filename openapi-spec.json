@@ -3,15 +3,1300 @@
   "paths": {
     "/": {
       "get": {
+        "description": "서버 동작 여부 확인용",
         "operationId": "AppController_getHello",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "정상 응답",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "example": "Hello World!"
+                }
+              }
+            }
           }
         },
+        "summary": "헬스 체크",
         "tags": [
           "App"
+        ]
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "description": "이메일·비밀번호로 로그인, access/refresh 토큰 발급",
+        "operationId": "JammitAuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JammitLoginRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "성공 시 CommonResponseDto, result에 토큰·유저 정보",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "success": true,
+                    "code": 200,
+                    "message": "OK",
+                    "result": {
+                      "accessToken": "…",
+                      "refreshToken": "…",
+                      "user": {}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "이메일 또는 비밀번호 불일치"
+          }
+        },
+        "summary": "로그인",
+        "tags": [
+          "Jammit Auth"
+        ]
+      }
+    },
+    "/auth/refresh": {
+      "post": {
+        "description": "refresh token으로 새 access token 발급",
+        "operationId": "JammitAuthController_refresh",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JammitRefreshRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto 래핑 결과"
+          },
+          "401": {
+            "description": "유효하지 않은 refresh token"
+          }
+        },
+        "summary": "토큰 갱신",
+        "tags": [
+          "Jammit Auth"
+        ]
+      }
+    },
+    "/auth/email/send-code": {
+      "post": {
+        "description": "6자리 코드를 메일로 전송 (개발/스테이징에서 로그 확인 가능할 수 있음)",
+        "operationId": "JammitAuthController_sendCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JammitEmailRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "발송 완료 (CommonResponseDto)"
+          }
+        },
+        "summary": "이메일 인증 코드 발송",
+        "tags": [
+          "Jammit Auth"
+        ]
+      }
+    },
+    "/auth/email/verify-code": {
+      "post": {
+        "description": "코드 일치 시 200, 실패 시 401 등",
+        "operationId": "JammitAuthController_verifyCode",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/JammitVerifyCodeRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "검증 성공 (HTTP status는 응답 본문과 함께 설정됨)"
+          },
+          "400": {
+            "description": "잘못된 요청"
+          },
+          "401": {
+            "description": "코드 불일치 또는 만료"
+          }
+        },
+        "summary": "이메일 인증 코드 검증",
+        "tags": [
+          "Jammit Auth"
+        ]
+      }
+    },
+    "/user": {
+      "post": {
+        "description": "Jammit 계정 생성",
+        "operationId": "JammitUserController_register",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "email": "user@example.com",
+                  "password": "password123",
+                  "username": "jammituser",
+                  "nickname": "닉네임",
+                  "preferredGenres": [
+                    "ROCK",
+                    "POP"
+                  ],
+                  "preferredBandSessions": [
+                    "VOCAL",
+                    "ELECTRIC_GUITAR"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "가입 성공 (CommonResponseDto)"
+          },
+          "400": {
+            "description": "이메일 중복 등"
+          }
+        },
+        "summary": "회원가입",
+        "tags": [
+          "Jammit User"
+        ]
+      },
+      "get": {
+        "description": "JWT 기준 로그인 유저 정보",
+        "operationId": "JammitUserController_me",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "프로필 객체 (CommonResponseDto)"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내 프로필 조회",
+        "tags": [
+          "Jammit User"
+        ]
+      },
+      "put": {
+        "operationId": "JammitUserController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "email": "new@example.com",
+                  "username": "newname",
+                  "password": "newpassword",
+                  "preferredGenres": [
+                    "JAZZ"
+                  ],
+                  "preferredBandSessions": [
+                    "DRUM"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "수정 후 프로필 (CommonResponseDto)"
+          },
+          "400": {
+            "description": "유저 없음 등"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내 프로필 수정",
+        "tags": [
+          "Jammit User"
+        ]
+      }
+    },
+    "/user/exists": {
+      "get": {
+        "description": "회원가입 전 사용 가능 여부",
+        "operationId": "JammitUserController_exists",
+        "parameters": [
+          {
+            "name": "email",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "example": "user@example.com",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "{ exists: boolean } 형태 (CommonResponseDto)"
+          }
+        },
+        "summary": "이메일 중복 확인",
+        "tags": [
+          "Jammit User"
+        ]
+      }
+    },
+    "/user/image": {
+      "put": {
+        "description": "직접 URL을 저장할 때 사용",
+        "operationId": "JammitUserController_updateImage",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "orgFileName": "photo.jpg",
+                  "profileImagePath": "https://example.com/profile/photo.jpg"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "갱신된 프로필 (CommonResponseDto)"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "프로필 이미지 URL 갱신",
+        "tags": [
+          "Jammit User"
+        ]
+      }
+    },
+    "/user/{userId}/profile-image": {
+      "post": {
+        "description": "multipart file → 스토리지 업로드 후 URL 반환",
+        "operationId": "JammitUserController_uploadProfile",
+        "parameters": [
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "description": "본인 users.id 와 일치해야 함",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "file"
+                ],
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "이미지 파일"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "업로드된 이미지 URL (CommonResponseDto)"
+          },
+          "400": {
+            "description": "파일 없음·유저 없음"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "프로필 이미지 업로드",
+        "tags": [
+          "Jammit User"
+        ]
+      }
+    },
+    "/gatherings": {
+      "get": {
+        "description": "장르·세션 필터, 페이지네이션",
+        "operationId": "JammitGatheringController_list",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "description": "0부터",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 20,
+              "type": "number"
+            }
+          },
+          {
+            "name": "sort",
+            "required": false,
+            "in": "query",
+            "description": "정렬 키 (백엔드 규약)",
+            "schema": {}
+          },
+          {
+            "name": "sessions",
+            "required": false,
+            "in": "query",
+            "description": "필터 세션 (복수 가능)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "VOCAL",
+                  "ELECTRIC_GUITAR",
+                  "DRUM",
+                  "ACOUSTIC_GUITAR",
+                  "BASS",
+                  "STRING_INSTRUMENT",
+                  "PERCUSSION",
+                  "KEYBOARD"
+                ]
+              }
+            }
+          },
+          {
+            "name": "genres",
+            "required": false,
+            "in": "query",
+            "description": "필터 장르 (복수 가능)",
+            "schema": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "ROCK",
+                  "METAL",
+                  "POP",
+                  "BALLAD",
+                  "INDIE",
+                  "ALTERNATIVE",
+                  "JAZZ",
+                  "PUNK",
+                  "ACOUSTIC",
+                  "FOLK",
+                  "RNB"
+                ]
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "모임 목록 페이지"
+          }
+        },
+        "summary": "모임 목록(공개)",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      },
+      "post": {
+        "operationId": "JammitGatheringController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "name": "주말 합주",
+                  "thumbnail": "https://example.com/thumb.jpg",
+                  "place": "서울",
+                  "description": "초보도 환영",
+                  "gatheringDateTime": "2026-05-01T14:00:00.000Z",
+                  "recruitDateTime": "2026-04-25T23:59:59.000Z",
+                  "genres": [
+                    "ROCK",
+                    "POP"
+                  ],
+                  "gatheringSessions": [
+                    {
+                      "bandSession": "VOCAL",
+                      "recruitCount": 2
+                    },
+                    {
+                      "bandSession": "DRUM",
+                      "recruitCount": 1
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "생성된 모임 (CommonResponseDto)"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임 생성",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      }
+    },
+    "/gatherings/my/created": {
+      "get": {
+        "operationId": "JammitGatheringController_myCreated",
+        "parameters": [
+          {
+            "name": "includeCanceled",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내가 만든 모임 목록",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      }
+    },
+    "/gatherings/my/participations": {
+      "get": {
+        "operationId": "JammitGatheringController_myParticipations",
+        "parameters": [
+          {
+            "name": "includeCanceled",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내가 참가 신청·참여한 모임 목록",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      }
+    },
+    "/gatherings/my/completed": {
+      "get": {
+        "operationId": "JammitGatheringController_myCompletedGatherings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내가 완료한 모임 목록 (영상 업로드 연동 등)",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      }
+    },
+    "/gatherings/{id}": {
+      "get": {
+        "operationId": "JammitGatheringController_detail",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "description": "gathering id",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "모임 상세"
+          },
+          "404": {
+            "description": "없음"
+          }
+        },
+        "summary": "모임 상세(공개)",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      },
+      "put": {
+        "description": "개설자만 가능",
+        "operationId": "JammitGatheringController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "name": "수정된 이름",
+                  "place": "부산",
+                  "description": "설명 변경"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          },
+          "403": {
+            "description": "권한 없음"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임 수정",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      },
+      "delete": {
+        "description": "개설자만 가능",
+        "operationId": "JammitGatheringController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임 취소",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      }
+    },
+    "/gatherings/{id}/complete": {
+      "put": {
+        "description": "개설자만 가능",
+        "operationId": "JammitGatheringController_complete",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임 완료 처리",
+        "tags": [
+          "Jammit Gathering"
+        ]
+      }
+    },
+    "/gatherings/{gatheringId}/participants": {
+      "post": {
+        "operationId": "JammitParticipationController_participate",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "bandSession": "VOCAL",
+                  "introduction": "안녕하세요, 보컬 지원합니다."
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임 참가 신청",
+        "tags": [
+          "Jammit Participation"
+        ]
+      },
+      "get": {
+        "description": "공개 조회",
+        "operationId": "JammitParticipationController_list",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임별 참가자 목록",
+        "tags": [
+          "Jammit Participation"
+        ]
+      }
+    },
+    "/gatherings/{gatheringId}/participants/{participantId}/cancel": {
+      "put": {
+        "description": "본인 신청만",
+        "operationId": "JammitParticipationController_cancel",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "participantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "참가 신청 취소",
+        "tags": [
+          "Jammit Participation"
+        ]
+      }
+    },
+    "/gatherings/{gatheringId}/participants/{participantId}/approve": {
+      "post": {
+        "description": "모임 개설자",
+        "operationId": "JammitParticipationController_approve",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "participantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "참가 승인",
+        "tags": [
+          "Jammit Participation"
+        ]
+      }
+    },
+    "/gatherings/{gatheringId}/participants/{participantId}/reject": {
+      "put": {
+        "description": "모임 개설자",
+        "operationId": "JammitParticipationController_reject",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "participantId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "참가 거절",
+        "tags": [
+          "Jammit Participation"
+        ]
+      }
+    },
+    "/gatherings/{gatheringId}/participants/my/completed": {
+      "get": {
+        "description": "경로에 gatheringId가 있으나 서비스는 로그인 유저 기준 전체 완료 목록을 반환합니다.",
+        "operationId": "JammitParticipationController_myCompleted",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내가 완료한 모임 목록",
+        "tags": [
+          "Jammit Participation"
+        ]
+      }
+    },
+    "/gatherings/{gatheringId}/participants/my": {
+      "get": {
+        "operationId": "JammitParticipationController_my",
+        "parameters": [
+          {
+            "name": "includeCanceled",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": false,
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "size",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 10,
+              "type": "number"
+            }
+          },
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내 참가 신청·참여 목록",
+        "tags": [
+          "Jammit Participation"
+        ]
+      }
+    },
+    "/review": {
+      "post": {
+        "operationId": "JammitReviewController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "example": {
+                  "gatheringId": 1,
+                  "revieweeId": 2,
+                  "content": "좋은 합주였습니다.",
+                  "isPracticeHelped": true
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "CommonResponseDto"
+          },
+          "401": {
+            "description": "미인증"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "리뷰 작성",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/{reviewId}": {
+      "delete": {
+        "description": "작성자 본인",
+        "operationId": "JammitReviewController_remove",
+        "parameters": [
+          {
+            "name": "reviewId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "리뷰 삭제",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/written": {
+      "get": {
+        "operationId": "JammitReviewController_written",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "내가 작성한 리뷰 목록",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/received/statistics": {
+      "get": {
+        "operationId": "JammitReviewController_stats",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "받은 리뷰 통계",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/received": {
+      "get": {
+        "operationId": "JammitReviewController_received",
+        "parameters": [
+          {
+            "name": "page",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 0,
+              "type": "number"
+            }
+          },
+          {
+            "name": "pageSize",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "example": 8,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "받은 리뷰 페이지",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/gathering/{gatheringId}": {
+      "get": {
+        "operationId": "JammitReviewController_byGathering",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "모임별 리뷰 목록",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/unwritten": {
+      "get": {
+        "operationId": "JammitReviewController_unwritten",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "CommonResponseDto"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "작성 대기 리뷰 목록",
+        "tags": [
+          "Jammit Review"
+        ]
+      }
+    },
+    "/review/{gatheringId}/participants/{userId}/reviews": {
+      "get": {
+        "description": "모임 개설자(owner) 권한 등 서비스 로직 따름",
+        "operationId": "JammitReviewController_userPage",
+        "parameters": [
+          {
+            "name": "gatheringId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "type": "number"
+            }
+          },
+          {
+            "name": "userId",
+            "required": true,
+            "in": "path",
+            "description": "리뷰 대상 users.id",
+            "schema": {
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "리뷰 페이지 데이터"
+          }
+        },
+        "security": [
+          {
+            "access-token": []
+          }
+        ],
+        "summary": "특정 모임·유저에 대한 리뷰 페이지",
+        "tags": [
+          "Jammit Review"
         ]
       }
     },
@@ -21,9 +1306,9 @@
         "parameters": [
           {
             "name": "page",
-            "required": false,
+            "required": true,
             "in": "query",
-            "description": "페이지 번호 (1부터)",
+            "description": "페이지 (1부터)",
             "schema": {
               "example": 1,
               "type": "number"
@@ -31,9 +1316,9 @@
           },
           {
             "name": "take",
-            "required": false,
+            "required": true,
             "in": "query",
-            "description": "한 페이지당 항목 수",
+            "description": "페이지 크기",
             "schema": {
               "example": 10,
               "type": "number"
@@ -41,7 +1326,7 @@
           },
           {
             "name": "order",
-            "required": false,
+            "required": true,
             "in": "query",
             "schema": {
               "enum": [
@@ -54,7 +1339,7 @@
         ],
         "responses": {
           "200": {
-            "description": "전체 영상 목록 리스트입니다.",
+            "description": "페이지네이션된 영상 목록",
             "content": {
               "application/json": {
                 "schema": {
@@ -67,15 +1352,10 @@
             }
           },
           "500": {
-            "description": "영상 목록을 불러오는 중 오류가 발생했습니다."
+            "description": "목록 조회 실패"
           }
         },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "전체 영상 목록 리스트",
+        "summary": "전체 영상 목록",
         "tags": [
           "Video"
         ]
@@ -89,17 +1369,16 @@
             "name": "userId",
             "required": false,
             "in": "query",
-            "description": "조회 대상 유저 ID (없으면 내 영상)",
+            "description": "Jammit users.id — 없으면 토큰 유저 본인",
             "schema": {
-              "example": "abc123",
+              "example": 1,
               "type": "number"
             }
           },
           {
             "name": "page",
-            "required": false,
+            "required": true,
             "in": "query",
-            "description": "페이지 번호 (1부터)",
             "schema": {
               "example": 1,
               "type": "number"
@@ -107,9 +1386,8 @@
           },
           {
             "name": "take",
-            "required": false,
+            "required": true,
             "in": "query",
-            "description": "한 페이지당 항목 수",
             "schema": {
               "example": 10,
               "type": "number"
@@ -117,7 +1395,7 @@
           },
           {
             "name": "order",
-            "required": false,
+            "required": true,
             "in": "query",
             "schema": {
               "enum": [
@@ -130,7 +1408,7 @@
         ],
         "responses": {
           "200": {
-            "description": "유저가 업로드한 영상 목록 리스트입니다.",
+            "description": "해당 유저가 올린 영상",
             "content": {
               "application/json": {
                 "schema": {
@@ -140,7 +1418,7 @@
             }
           },
           "401": {
-            "description": "인증되지 않은 사용자"
+            "description": "미인증"
           }
         },
         "security": [
@@ -148,7 +1426,7 @@
             "access-token": []
           }
         ],
-        "summary": "유저가 업로드한 영상 목록",
+        "summary": "유저별 업로드 영상 목록",
         "tags": [
           "Video"
         ]
@@ -162,16 +1440,16 @@
             "name": "userId",
             "required": false,
             "in": "query",
-            "description": "조회 대상 유저 ID (없으면 내 영상)",
+            "description": "Jammit users.id — 없으면 본인",
             "schema": {
-              "example": "abc123",
+              "example": 1,
               "type": "number"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": "유저가 업로드한 영상 개수",
+            "description": "{ count, message }",
             "content": {
               "application/json": {
                 "schema": {
@@ -184,7 +1462,7 @@
             }
           },
           "401": {
-            "description": "인증되지 않은 사용자"
+            "description": "미인증"
           }
         },
         "security": [
@@ -192,7 +1470,7 @@
             "access-token": []
           }
         ],
-        "summary": "유저가 업로드한 영상 개수",
+        "summary": "유저별 업로드 영상 개수",
         "tags": [
           "Video"
         ]
@@ -200,6 +1478,7 @@
     },
     "/video/status": {
       "get": {
+        "description": "uploadId 기준 playback 준비 여부",
         "operationId": "VideoController_getMuxStatus",
         "parameters": [
           {
@@ -207,21 +1486,27 @@
             "required": true,
             "in": "query",
             "schema": {
+              "example": "abc-upload-id",
               "type": "string"
             }
           }
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "playbackId": "xxxxx",
+                    "status": "ready"
+                  }
+                }
+              }
+            }
           }
         },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "업로드 상태",
+        "summary": "Mux 업로드 처리 상태",
         "tags": [
           "Video"
         ]
@@ -235,6 +1520,7 @@
             "name": "videoId",
             "required": true,
             "in": "path",
+            "description": "영상 UUID",
             "schema": {
               "type": "string"
             }
@@ -242,7 +1528,7 @@
         ],
         "responses": {
           "200": {
-            "description": "영상 목록 상세입니다.",
+            "description": "상세 JSON",
             "content": {
               "application/json": {
                 "schema": {
@@ -252,30 +1538,26 @@
             }
           },
           "404": {
-            "description": "해당 영상이 존재하지 않습니다."
+            "description": "영상 없음"
           },
           "500": {
-            "description": "영상 상세데이터를 불러오는 중 오류가 발생했습니다."
+            "description": "조회 오류"
           }
         },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "영상 목록 상세",
+        "summary": "영상 상세",
         "tags": [
           "Video"
         ]
       },
       "post": {
+        "description": "로그인 시 회원 UUID 기준, 비로그인 시 IP. Authorization 헤더는 선택.",
         "operationId": "VideoController_viewCountVideos",
         "parameters": [
           {
             "name": "videoId",
             "required": true,
             "in": "path",
-            "description": "조회수 증가시킬 비디오 ID",
+            "description": "영상 UUID",
             "schema": {
               "type": "string"
             }
@@ -283,7 +1565,7 @@
           {
             "name": "x-forwarded-for",
             "in": "header",
-            "description": "비회원 식별용 IP (선택, 자동 처리됨)",
+            "description": "프록시 뒤 비회원 IP (선택)",
             "required": false,
             "schema": {
               "type": "string"
@@ -292,7 +1574,7 @@
         ],
         "responses": {
           "200": {
-            "description": "조회수 증가 성공",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
@@ -306,16 +1588,10 @@
             }
           },
           "400": {
-            "description": "유저 식별이 불가능합니다."
-          },
-          "401": {
-            "description": "인증되지 않은 사용자"
+            "description": "유저·IP 식별 불가"
           },
           "404": {
-            "description": "존재하지 않는 영상입니다."
-          },
-          "500": {
-            "description": "조회수 처리 중 오류가 발생했습니다."
+            "description": "영상 없음"
           }
         },
         "security": [
@@ -329,6 +1605,7 @@
         ]
       },
       "delete": {
+        "description": "본인 업로드만",
         "operationId": "VideoController_deleteVideo",
         "parameters": [
           {
@@ -342,7 +1619,25 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "영상이 삭제되었습니다."
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "미인증"
+          },
+          "403": {
+            "description": "권한 없음"
+          },
+          "404": {
+            "description": "영상 없음"
           }
         },
         "security": [
@@ -350,6 +1645,7 @@
             "access-token": []
           }
         ],
+        "summary": "영상 삭제",
         "tags": [
           "Video"
         ]
@@ -363,6 +1659,7 @@
             "name": "videoId",
             "required": true,
             "in": "path",
+            "description": "영상 UUID",
             "schema": {
               "type": "string"
             }
@@ -370,7 +1667,7 @@
         ],
         "responses": {
           "201": {
-            "description": "좋아요 추가 또는 취소 처리 결과",
+            "description": "좋아요/취소 결과",
             "content": {
               "application/json": {
                 "schema": {
@@ -384,13 +1681,13 @@
             }
           },
           "401": {
-            "description": "인증되지 않은 사용자"
+            "description": "미인증"
           },
           "404": {
-            "description": "존재하지 않는 영상입니다."
+            "description": "영상 없음"
           },
           "500": {
-            "description": "좋아요 처리 중 오류가 발생했습니다."
+            "description": "처리 오류"
           }
         },
         "security": [
@@ -398,7 +1695,7 @@
             "access-token": []
           }
         ],
-        "summary": "영상 좋아요/취소",
+        "summary": "좋아요 토글",
         "tags": [
           "Video"
         ]
@@ -419,7 +1716,20 @@
         ],
         "responses": {
           "200": {
-            "description": ""
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "liked": true,
+                    "likeCount": 10
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "미인증"
           }
         },
         "security": [
@@ -427,7 +1737,7 @@
             "access-token": []
           }
         ],
-        "summary": "좋아요 여부 조회",
+        "summary": "좋아요 여부·개수",
         "tags": [
           "Video"
         ]
@@ -439,7 +1749,7 @@
         "parameters": [],
         "responses": {
           "201": {
-            "description": "Direct Upload용 Mux URL 발급",
+            "description": "",
             "content": {
               "application/json": {
                 "schema": {
@@ -447,6 +1757,9 @@
                 }
               }
             }
+          },
+          "401": {
+            "description": "미인증"
           }
         },
         "security": [
@@ -454,7 +1767,7 @@
             "access-token": []
           }
         ],
-        "summary": "Mux upload용 URL 발급",
+        "summary": "Mux Direct Upload URL 발급",
         "tags": [
           "Video"
         ]
@@ -462,6 +1775,7 @@
     },
     "/video/register": {
       "post": {
+        "description": "Mux 메타와 제목·설명 등 저장",
         "operationId": "VideoController_registerMuxVideo",
         "parameters": [],
         "requestBody": {
@@ -476,14 +1790,13 @@
         },
         "responses": {
           "201": {
-            "description": "Mux 영상 등록 성공",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/VideoResponseDto"
-                }
-              }
-            }
+            "description": "등록 결과"
+          },
+          "401": {
+            "description": "미인증"
+          },
+          "500": {
+            "description": "등록 실패"
           }
         },
         "security": [
@@ -491,7 +1804,7 @@
             "access-token": []
           }
         ],
-        "summary": "Mux 업로드 완료 후 등록 요청",
+        "summary": "업로드 완료 후 영상 등록",
         "tags": [
           "Video"
         ]
@@ -499,19 +1812,18 @@
     },
     "/video/webhook/mux": {
       "post": {
+        "description": "Raw JSON body + Mux-Signature. Swagger에서는 서명 검증이 어려우므로 실제는 Mux/Postman 등으로 호출.",
         "operationId": "VideoController_muxWebHook",
         "parameters": [],
         "responses": {
           "200": {
-            "description": ""
+            "description": "{ received: true }"
+          },
+          "403": {
+            "description": "서명 불일치"
           }
         },
-        "security": [
-          {
-            "access-token": []
-          }
-        ],
-        "summary": "웹훅",
+        "summary": "Mux 웹훅",
         "tags": [
           "Video"
         ]
@@ -519,6 +1831,7 @@
     },
     "/comment": {
       "get": {
+        "description": "영상별 페이지네이션",
         "operationId": "CommentController_getComment",
         "parameters": [
           {
@@ -533,9 +1846,9 @@
           },
           {
             "name": "page",
-            "required": false,
+            "required": true,
             "in": "query",
-            "description": "페이지 번호 (1부터)",
+            "description": "페이지 (1부터)",
             "schema": {
               "example": 1,
               "type": "number"
@@ -543,9 +1856,9 @@
           },
           {
             "name": "take",
-            "required": false,
+            "required": true,
             "in": "query",
-            "description": "한 페이지당 항목 수",
+            "description": "페이지 크기",
             "schema": {
               "example": 10,
               "type": "number"
@@ -554,23 +1867,29 @@
         ],
         "responses": {
           "200": {
-            "description": "영상에 달린 댓글 리스트",
+            "description": "페이지네이션 객체 (data: 댓글 항목 배열)",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/GetCommentDto"
+                  "example": {
+                    "totalCount": 0,
+                    "totalPage": 1,
+                    "page": 1,
+                    "data": [],
+                    "message": "영상에 달린 댓글 리스트를 조회했습니다."
                   }
                 }
               }
             }
           },
+          "400": {
+            "description": "조회 실패(잘못된 요청 등)"
+          },
           "500": {
-            "description": "영상에 달린 댓글 리스트를 불러오는 중 오류가 발생했습니다."
+            "description": "서버 오류"
           }
         },
-        "summary": "댓글 리스트",
+        "summary": "댓글 목록",
         "tags": [
           "Comment"
         ]
@@ -590,23 +1909,16 @@
         },
         "responses": {
           "200": {
-            "description": "댓글 쓰기입니다.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/CreateCommentDto"
-                }
-              }
-            }
+            "description": "작성된 댓글 요약"
           },
           "401": {
-            "description": "인증되지 않은 사용자"
+            "description": "미인증"
           },
           "404": {
-            "description": "존재하지 않는 영상입니다."
+            "description": "영상 없음"
           },
           "500": {
-            "description": "댓글 쓰기 중 오류가 발생했습니다."
+            "description": "댓글 쓰기 중 오류"
           }
         },
         "security": [
@@ -614,7 +1926,7 @@
             "access-token": []
           }
         ],
-        "summary": "댓글 쓰기",
+        "summary": "댓글 작성",
         "tags": [
           "Comment"
         ]
@@ -641,6 +1953,68 @@
       }
     },
     "schemas": {
+      "JammitLoginRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com",
+            "description": "로그인 이메일"
+          },
+          "password": {
+            "type": "string",
+            "example": "password123",
+            "description": "비밀번호"
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "JammitRefreshRequestDto": {
+        "type": "object",
+        "properties": {
+          "refreshToken": {
+            "type": "string",
+            "description": "발급받은 JWT refresh token"
+          }
+        },
+        "required": [
+          "refreshToken"
+        ]
+      },
+      "JammitEmailRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com",
+            "description": "인증 코드를 받을 이메일"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "JammitVerifyCodeRequestDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "user@example.com"
+          },
+          "code": {
+            "type": "string",
+            "example": "123456",
+            "description": "이메일로 받은 6자리 코드"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ]
+      },
       "VideoListDto": {
         "type": "object",
         "properties": {
@@ -831,16 +2205,6 @@
             "example": "https://picsum.photos/200/300",
             "description": "썸네일 이미지 URL"
           },
-          "creatorTitle": {
-            "type": "string",
-            "example": "재미있게 합주한 아이스크림",
-            "description": "비디오 제목"
-          },
-          "creatorName": {
-            "type": "string",
-            "example": "트탈라레오",
-            "description": "사용자 이름"
-          },
           "slug": {
             "type": "number",
             "example": 1,
@@ -852,53 +2216,7 @@
           "description",
           "uploadId",
           "thumbnailUrl",
-          "creatorTitle",
-          "creatorName",
           "slug"
-        ]
-      },
-      "GetCommentDto": {
-        "type": "object",
-        "properties": {
-          "id": {
-            "type": "string",
-            "example": "abc123-uuid",
-            "description": "댓글 ID"
-          },
-          "userId": {
-            "type": "string",
-            "example": "u123",
-            "description": "작성자 유저 ID"
-          },
-          "nickname": {
-            "type": "string",
-            "example": "김코드",
-            "description": "작성자 닉네임"
-          },
-          "profileImage": {
-            "type": "string",
-            "example": "https://cdn.example.com/profile.jpg",
-            "description": "작성자 프로필 이미지"
-          },
-          "content": {
-            "type": "string",
-            "example": "이 영상 너무 좋아요!",
-            "description": "댓글 내용"
-          },
-          "createdAt": {
-            "format": "date-time",
-            "type": "string",
-            "example": "2025-06-20T12:34:56.000Z",
-            "description": "작성일시"
-          }
-        },
-        "required": [
-          "id",
-          "userId",
-          "nickname",
-          "profileImage",
-          "content",
-          "createdAt"
         ]
       },
       "CreateCommentDto": {

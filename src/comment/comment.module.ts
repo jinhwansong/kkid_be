@@ -1,6 +1,4 @@
-import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
-import { Comment, Video } from '@/entities';
-import { UserModule } from '@/user/user.module';
+import { Comment, Video } from '@/database/entities';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -8,8 +6,8 @@ import { CommentController } from './comment.controller';
 import { CommentService } from './comment.service';
 
 @Module({
-  providers: [CommentService,AuthVerificationService],
-  imports: [TypeOrmModule.forFeature([Video, Comment]), UserModule, HttpModule],
+  providers: [CommentService],
+  imports: [TypeOrmModule.forFeature([Video, Comment]), HttpModule],
   controllers: [CommentController],
   exports: [CommentService],
 })

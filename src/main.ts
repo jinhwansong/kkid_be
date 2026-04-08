@@ -4,8 +4,8 @@ import { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import * as bodyParser from 'body-parser';
 import dotenv from 'dotenv';
-import { AppModule } from './app.module';
-import { HttpExceptionFilter } from './httpException.fliter';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { AppModule } from './app/app.module';
 import { writeFileSync } from 'fs';
 import { join } from 'path';
 

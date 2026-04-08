@@ -32,18 +32,6 @@ export class RegisterMuxVideoDto extends VideoUploadDto {
    @IsString()
   thumbnailUrl?: string;
 
-  @ApiProperty({
-    example: '재미있게 합주한 아이스크림',
-    description: '비디오 제목',
-  })
-  @IsOptional()
-  @IsString()
-  creatorTitle?: string;
-  @ApiProperty({ example: '트탈라레오', description: '사용자 이름' })
-  @IsOptional()
-  @IsString()
-  creatorName?: string;
-
  @ApiProperty({
     example: 1,
     description: '상세페이지 아이디',

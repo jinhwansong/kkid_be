@@ -1,0 +1,43 @@
+export enum Genre {
+  ROCK = 'ROCK',
+  METAL = 'METAL',
+  POP = 'POP',
+  BALLAD = 'BALLAD',
+  INDIE = 'INDIE',
+  ALTERNATIVE = 'ALTERNATIVE',
+  JAZZ = 'JAZZ',
+  PUNK = 'PUNK',
+  ACOUSTIC = 'ACOUSTIC',
+  FOLK = 'FOLK',
+  RNB = 'RNB',
+}
+
+export enum BandSession {
+  VOCAL = 'VOCAL',
+  ELECTRIC_GUITAR = 'ELECTRIC_GUITAR',
+  DRUM = 'DRUM',
+  ACOUSTIC_GUITAR = 'ACOUSTIC_GUITAR',
+  BASS = 'BASS',
+  STRING_INSTRUMENT = 'STRING_INSTRUMENT',
+  PERCUSSION = 'PERCUSSION',
+  KEYBOARD = 'KEYBOARD',
+}
+
+export enum GatheringStatus {
+  RECRUITING = 'RECRUITING',
+  CONFIRMED = 'CONFIRMED',
+  COMPLETED = 'COMPLETED',
+  CANCELED = 'CANCELED',
+}
+
+export enum ParticipantStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  COMPLETED = 'COMPLETED',
+  CANCELED = 'CANCELED',
+}
+
+export enum OauthPlatform {
+  NONE = 'NONE',
+}

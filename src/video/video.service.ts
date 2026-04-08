@@ -1,8 +1,7 @@
-import { Like, User, Video, VideoMetadata } from '@/entities';
+import { JammitUser, Like, Video } from '@/database/entities';
 import { MuxService } from '@/mux/mux.service';
 import { RedisService } from '@/redis/redis.service';
-import { UserService } from '@/user/user.service';
-import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, InternalServerErrorException, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as crypto from 'crypto';
 import dayjs from 'dayjs';
@@ -15,17 +14,11 @@ export class VideoService {
   constructor(
     @InjectRepository(Video)
     private readonly videoRepository: Repository<Video>,
-    @InjectRepository(User)
-    private readonly userRepository: Repository<User>,
     @InjectRepository(Like)
     private readonly likeRepository: Repository<Like>,
-    @InjectRepository(VideoMetadata)
-    private readonly videoMetadataRepository: Repository<VideoMetadata>,
-    
+
     private readonly redisService: RedisService,
-    private readonly userService: UserService,
-    private readonly muxService: MuxService, 
-    
+    private readonly muxService: MuxService,
   ) {}
    
   // 영상 목록 상세
@@ -34,7 +27,6 @@ export class VideoService {
       const video = await this.videoRepository
       .createQueryBuilder('video')
       .leftJoinAndSelect('video.user', 'user')
-      .leftJoinAndSelect('video.metadata', 'metadata')
       .select([
         'video.id AS id',
         'video.title AS title',
@@ -43,12 +35,10 @@ export class VideoService {
         'video.viewCount AS viewCount',
         'video.createdAt AS createdAt',
         'video.thumbnailUrl AS thumbnailUrl',
-        'metadata.creatorName AS creatorName',
-        'metadata.creatorTitle AS creatorTitle',
-        'metadata.thumbnailUrl AS thumbnailUrl',
-        'metadata.slug AS slug',
+        'video.slug AS slug',
         'user.nickname AS nickname',
-        'user.userId AS userId',
+        'user.username AS username',
+        'user.id AS userId',
       ])
       .where('video.id = :videoId', { videoId })
       .getRawOne();
@@ -63,8 +53,8 @@ export class VideoService {
         playbackId: raw.playbackid,
         viewCount: Number(raw.viewcount ?? 0),
         creatorThumbnailUrl: raw.thumbnailurl,
-        creatorName: raw.creatorname,
-        creatorTitle: raw.creatortitle,
+        creatorName: (raw.nickname ?? raw.username) as string | null,
+        creatorTitle: null,
         slug: raw.slug,
         description: raw.description,
         nickname: raw.nickname,
@@ -84,7 +74,9 @@ export class VideoService {
 
   // 좋아요 여부
   async isVideoLikedByUser(videoId: string, userId: number): Promise<boolean> {
-    const count = await this.likeRepository.count({ where: { video: { id: videoId }, user: { userId } } });
+    const count = await this.likeRepository.count({
+      where: { video: { id: videoId }, user: { id: userId } },
+    });
     return count > 0;
   }
 
@@ -102,7 +94,10 @@ export class VideoService {
   // 영상 좋아요
   async toggleLike(videoId: string, info?: CreateUserDto) {
     try {
-      const user = await this.userService.findOrCreateUser(info);
+      if (!info?.id) {
+        throw new UnauthorizedException('로그인이 필요합니다.');
+      }
+      const jammitId = info.id;
       // 영상 있니?
       const videoEx = await this.videoRepository
         .createQueryBuilder('video')
@@ -114,7 +109,7 @@ export class VideoService {
       // 좋아요 되있니?
       const likeEx = await this.likeRepository
         .createQueryBuilder('like')
-        .where('like.userId = :userId', { userId: user.id })
+        .where('like.userId = :userId', { userId: jammitId })
         .andWhere('like.videoId = :videoId', { videoId })
         .getOne();
       // 있으면 삭제
@@ -126,7 +121,7 @@ export class VideoService {
           .createQueryBuilder()
           .insert()
           .into('like')
-          .values({ user: { id: user.id }, video: { id: videoId } })
+          .values({ user: { id: jammitId }, video: { id: videoId } })
           .execute();
       }
       const likeRaw = await this.likeRepository
@@ -228,34 +223,25 @@ export class VideoService {
   // 사용자가 업로드 후 등록 요청을 보냄
   async registerMuxVideo(info: CreateUserDto , body: RegisterMuxVideoDto) {
     try {
-      const user = await this.userService.findOrCreateUser(info);
-      // db에 저장
       const video = this.videoRepository.create({
         title: body.title,
         description: body.description,
-        user,
+        user: { id: info.id } as JammitUser,
         uploadId: body.uploadId,
+        thumbnailUrl: body.thumbnailUrl ?? null,
+        slug: body.slug ?? null,
       });
       const savedVideo = await this.videoRepository.save(video);
-      const metadata = this.videoMetadataRepository.create({
-        creatorName: body.creatorName,
-        creatorTitle: body.creatorTitle,
-        thumbnailUrl: body.thumbnailUrl,
-        slug: body.slug,
-        video: savedVideo,
-      });
-      await this.videoMetadataRepository.save(metadata);
-
 
       return {
         message: '영상 등록 완료',
-        id: video.id,
-        title: video.title,
-        thumbnailUrl: video.thumbnailUrl,
-        nickname: video.user.nickname,
-        createdAt: video.createdAt,
-        viewCount: video.viewCount,
-        duration: video.duration
+        id: savedVideo.id,
+        title: savedVideo.title,
+        thumbnailUrl: savedVideo.thumbnailUrl,
+        nickname: info.nickname,
+        createdAt: savedVideo.createdAt,
+        viewCount: savedVideo.viewCount,
+        duration: savedVideo.duration,
       };
     } catch (error) {
       console.error('영상 등록 오류:', error);
@@ -270,10 +256,8 @@ export class VideoService {
   async viewCountVideos(videoId: string, info?: CreateUserDto, ip?: string) {
     try {
       let userIdForRedis: string;
-      if (info?.email) {
-        // 영상을 본사람들도 댓글 좋아요 쓸수 잇어야하니... 유저 정보에 들어가게 한다.
-        const user = await this.userService.findOrCreateUser(info);
-        userIdForRedis = user.id;
+      if (info?.id != null) {
+        userIdForRedis = String(info.id);
       } else if (ip) {
         // 비회원 도 카운트 늘려야되용....
         userIdForRedis = `guest:${ip}`;
@@ -329,11 +313,11 @@ export class VideoService {
         .take(limit)
         .getManyAndCount();
 
-      const data = results.map(v => ({
+      const data = results.map((v) => ({
         id: v.id,
         title: v.title,
         thumbnailUrl: v.thumbnailUrl,
-        nickname: v.user.nickname,
+        nickname: v.user?.nickname ?? v.user?.username,
         createdAt: v.createdAt,
         viewCount: v.viewCount,
         duration: v.duration
@@ -372,19 +356,10 @@ export class VideoService {
       try {
         const safePage = Math.max(1, page);
         const skip = Math.max(0, (safePage - 1) * limit);
-        const user = await this.userRepository.findOneBy({ userId: userInfo });
-        if (!user) {
-          return {
-            totalPage: 0,
-            page:0,
-            data:[],
-            message:'유저가 업로드한 영상 목록을 조회했습니다.',
-          };
-        }
         const [video, total] = await this.videoRepository
           .createQueryBuilder('video')
           .leftJoinAndSelect('video.user', 'user')
-          .where('video.userId  = :id ', { id: user.id  })
+          .where('video.userId = :jammitId', { jammitId: userInfo })
           .orderBy(
             order === 'latest' ? 'video.createdAt' : 'video.viewCount',
             'DESC',
@@ -393,11 +368,11 @@ export class VideoService {
           .take(limit)
           .getManyAndCount();
 
-          const data = video.map(v => ({
+          const data = video.map((v) => ({
             id: v.id,
             title: v.title,
             thumbnailUrl: v.thumbnailUrl,
-            nickname: v.user.nickname,
+            nickname: v.user?.nickname ?? v.user?.username,
             createdAt: v.createdAt,
             viewCount: v.viewCount,
             duration: v.duration
@@ -420,14 +395,9 @@ export class VideoService {
   // 영상 개수만 반환
   async getMyVideoTotal (userInfo: number) {
     try {
-      const user = await this.userRepository.findOneBy({ userId: userInfo });
-    if (!user) {
-      return { count: 0, message: '유저가 없습니다.' };
-    }
-
     const count = await this.videoRepository
       .createQueryBuilder('video')
-      .where('video.userId = :userId', { userId: user.id })
+      .where('video.userId = :jammitId', { jammitId: userInfo })
       .getCount();
 
     return {
@@ -450,12 +420,12 @@ export class VideoService {
   });
 
   if (!video) throw new NotFoundException('영상이 존재하지 않습니다.');
-  if (video.user.userId !== userId) throw new ForbiddenException('삭제 권한이 없습니다.');
+  if (video.user.id !== userId) throw new ForbiddenException('삭제 권한이 없습니다.');
 
   try {
     await this.muxService.deleteAsset(video.assetId, {
       email: video.user.email,
-      nickname: video.user.nickname,
+      nickname: video.user.nickname ?? video.user.username,
     });
 
     await this.videoRepository.remove(video);

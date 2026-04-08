@@ -1,9 +1,7 @@
-import { AuthVerificationService } from '@/auth-verification/auth-verification.service';
-import { Like, User, Video } from '@/entities';
-import { VideoMetadata } from '@/entities/videoMetadata.entity';
+import { JammitUser } from '@/database/entities';
+import { Like, Video } from '@/database/entities';
 import { MuxService } from '@/mux/mux.service';
-import { RedisService } from '@/redis/redis.service';
-import { UserModule } from '@/user/user.module';
+import { RedisModule } from '@/redis/redis.module';
 import { HttpModule } from '@nestjs/axios';
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -11,9 +9,13 @@ import { VideoController } from './video.controller';
 import { VideoService } from './video.service';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Video, User, Like,VideoMetadata]), HttpModule,UserModule],
+  imports: [
+    TypeOrmModule.forFeature([Video, JammitUser, Like]),
+    HttpModule,
+    RedisModule,
+  ],
   controllers: [VideoController],
-  providers: [VideoService, RedisService, AuthVerificationService, MuxService],
+  providers: [VideoService, MuxService],
   exports: [VideoService],
 })
 export class VideoModule {}

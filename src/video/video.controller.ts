@@ -1,6 +1,6 @@
-import { User } from '@/common/decorator/user.decorator';
-import { AuthOptionalGuard } from '@/common/guard/auth-optional.guard';
-import { AuthGuard } from '@/common/guard/auth.guard';
+import { User } from '@/common/decorators/current-user.decorator';
+import { AuthOptionalGuard } from '@/common/guards/auth-optional.guard';
+import { AuthGuard } from '@/common/guards/auth.guard';
 import { MuxService } from '@/mux/mux.service';
 import {
   Body,
@@ -16,11 +16,20 @@ import {
   Req,
   Res,
   UseGuards,
-  UseInterceptors
+  UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { ApiBearerAuth, ApiHeader, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
-import { Request } from 'express';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiHeader,
+  ApiOperation,
+  ApiParam,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+} from '@nestjs/swagger';
+import { Request, Response } from 'express';
 import * as multer from 'multer';
 import { MuxUploadResponseDto, RegisterMuxVideoDto } from './dto/mux.dto';
 import { CreateUserDto } from './dto/user.dto';
@@ -34,73 +43,67 @@ import { VideoService } from './video.service';
 )
 @ApiTags('Video')
 @Controller('video')
-@ApiBearerAuth('access-token')
 export class VideoController {
   constructor(
     private readonly videoService: VideoService,
     private readonly muxService: MuxService,
   ) {}
- 
-  @ApiOperation({ summary: '전체 영상 목록 리스트' })
+
+  @ApiOperation({ summary: '전체 영상 목록' })
   @ApiResponse({
     status: 200,
-    description: '전체 영상 목록 리스트입니다.',
+    description: '페이지네이션된 영상 목록',
     type: [VideoListFlatDto],
   })
-  @ApiResponse({
-    status: 500,
-    description: '영상 목록을 불러오는 중 오류가 발생했습니다.',
-  })
-  @ApiQuery({ name: 'page', required: false, example: 1, description: '페이지 번호 (1부터)' })
-  @ApiQuery({ name: 'take', required: false, example: 10, description: '한 페이지당 항목 수' })
-  @ApiQuery({ name: 'order', required: false, enum: ['latest', 'popular'], example: 'latest' })
+  @ApiResponse({ status: 500, description: '목록 조회 실패' })
+  @ApiQuery({ name: 'page', required: true, example: 1, description: '페이지 (1부터)' })
+  @ApiQuery({ name: 'take', required: true, example: 10, description: '페이지 크기' })
+  @ApiQuery({ name: 'order', required: true, enum: ['latest', 'popular'], example: 'latest' })
   @Get('')
   async getVideosWithPagination(
-    @Query('page',  ParseIntPipe) page:number,
-    @Query('take',  ParseIntPipe) take:number,
+    @Query('page', ParseIntPipe) page: number,
+    @Query('take', ParseIntPipe) take: number,
     @Query('order') order: 'latest' | 'popular',
   ) {
     return this.videoService.getVideosWithPagination(take, page, order);
   }
 
-
-  @ApiOperation({ summary: '유저가 업로드한 영상 목록' })
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '유저별 업로드 영상 목록' })
   @ApiResponse({
     status: 200,
-    description: '유저가 업로드한 영상 목록 리스트입니다.',
+    description: '해당 유저가 올린 영상',
     type: VideoListFlatDto,
   })
-  @ApiResponse({
-    status: 401,
-    description: '인증되지 않은 사용자',
-  })
+  @ApiResponse({ status: 401, description: '미인증' })
   @ApiQuery({
     name: 'userId',
     required: false,
-    example: 'abc123',
-    description: '조회할 유저 ID (없으면 본인)',
+    example: 1,
+    description: 'Jammit users.id — 없으면 토큰 유저 본인',
   })
-  @ApiQuery({ name: 'userId', required: false, example: 'abc123', description: '조회 대상 유저 ID (없으면 내 영상)' })
-  @ApiQuery({ name: 'page', required: false, example: 1, description: '페이지 번호 (1부터)' })
-  @ApiQuery({ name: 'take', required: false, example: 10, description: '한 페이지당 항목 수' })
-  @ApiQuery({ name: 'order', required: false, enum: ['latest', 'popular'], example: 'latest' })
-  @UseGuards(AuthGuard)
+  @ApiQuery({ name: 'page', required: true, example: 1 })
+  @ApiQuery({ name: 'take', required: true, example: 10 })
+  @ApiQuery({ name: 'order', required: true, enum: ['latest', 'popular'] })
   @Get('user')
   async getMyVideos(
     @User() user: CreateUserDto,
-    @Query('userId') userId: number,
-    @Query('page',  ParseIntPipe) page:number,
-    @Query('take',  ParseIntPipe) take:number,
+    @Query('userId', new ParseIntPipe({ optional: true })) userId: number | undefined,
+    @Query('page', ParseIntPipe) page: number,
+    @Query('take', ParseIntPipe) take: number,
     @Query('order') order: 'latest' | 'popular',
   ) {
-    const targetUserId = userId || user.id;
+    const targetUserId = userId ?? user.id;
     return this.videoService.getMyVideos(targetUserId, take, page, order);
   }
-  
-  @ApiOperation({ summary: '유저가 업로드한 영상 개수' })
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '유저별 업로드 영상 개수' })
   @ApiResponse({
     status: 200,
-    description: '유저가 업로드한 영상 개수',
+    description: '{ count, message }',
     schema: {
       example: {
         count: 12,
@@ -108,141 +111,126 @@ export class VideoController {
       },
     },
   })
-  @ApiResponse({
-    status: 401,
-    description: '인증되지 않은 사용자',
-  })
+  @ApiResponse({ status: 401, description: '미인증' })
   @ApiQuery({
     name: 'userId',
     required: false,
-    example: 'abc123',
-    description: '조회할 유저 ID (없으면 본인)',
+    example: 1,
+    description: 'Jammit users.id — 없으면 본인',
   })
-  @ApiQuery({ name: 'userId', required: false, example: 'abc123', description: '조회 대상 유저 ID (없으면 내 영상)' })
-  @UseGuards(AuthGuard)
   @Get('user/count')
   async getMyVideoTotal(
     @User() user: CreateUserDto,
-    @Query('userId') userId: number,
+    @Query('userId', new ParseIntPipe({ optional: true })) userId: number | undefined,
   ) {
-    const targetUserId = userId || user.id;
+    const targetUserId = userId ?? user.id;
     return this.videoService.getMyVideoTotal(targetUserId);
   }
 
-  @ApiOperation({ summary: '업로드 상태' })
+  @ApiOperation({ summary: 'Mux 업로드 처리 상태', description: 'uploadId 기준 playback 준비 여부' })
+  @ApiQuery({ name: 'uploadId', required: true, example: 'abc-upload-id' })
+  @ApiResponse({
+    status: 200,
+    schema: {
+      example: { playbackId: 'xxxxx', status: 'ready' },
+    },
+  })
   @Get('status')
   async getMuxStatus(@Query('uploadId') uploadId: string) {
     return this.videoService.getAssetStatus(uploadId);
-      
   }
 
-  @ApiOperation({ summary: '영상 목록 상세' })
-  @ApiResponse({
-    status: 200,
-    description: '영상 목록 상세입니다.',
-    type: VideoResponseDto,
-  })
-   @ApiResponse({
-    status: 404,
-    description: '해당 영상이 존재하지 않습니다.',
-  })
-  @ApiResponse({
-    status: 500,
-    description: '영상 상세데이터를 불러오는 중 오류가 발생했습니다.',
-  })
+  @ApiOperation({ summary: '영상 상세' })
+  @ApiParam({ name: 'videoId', description: '영상 UUID' })
+  @ApiResponse({ status: 200, description: '상세 JSON', type: VideoResponseDto })
+  @ApiResponse({ status: 404, description: '영상 없음' })
+  @ApiResponse({ status: 500, description: '조회 오류' })
   @Get(':videoId')
-  async getVideosWithDetail(
-    @Param('videoId') videoId: string,
-  ) {
+  async getVideosWithDetail(@Param('videoId') videoId: string) {
     return this.videoService.getVideosWithDetail(videoId);
   }
-  
-  @ApiOperation({ summary: '영상 좋아요/취소' })
+
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '좋아요 토글' })
+  @ApiParam({ name: 'videoId', description: '영상 UUID' })
   @ApiResponse({
     status: 201,
-    description: '좋아요 추가 또는 취소 처리 결과',
+    description: '좋아요/취소 결과',
     schema: {
-      example: {
-        message: '좋아요',
-        liked: true,
-        likeCount: 5,
-      },
+      example: { message: '좋아요', liked: true, likeCount: 5 },
     },
   })
-  @ApiResponse({
-    status: 401,
-    description: '인증되지 않은 사용자',
-  })
-  @ApiResponse({
-    status: 404,
-    description: '존재하지 않는 영상입니다.',
-  })
-  @ApiResponse({
-    status: 500,
-    description: '좋아요 처리 중 오류가 발생했습니다.',
-  })
-  @UseGuards(AuthGuard)
+  @ApiResponse({ status: 401, description: '미인증' })
+  @ApiResponse({ status: 404, description: '영상 없음' })
+  @ApiResponse({ status: 500, description: '처리 오류' })
   @Post('like/:videoId')
-  async toggleLike(
-    @Param('videoId') videoId: string,
-    @User() user?: CreateUserDto,
-  ) {
+  async toggleLike(@Param('videoId') videoId: string, @User() user?: CreateUserDto) {
     return this.videoService.toggleLike(videoId, user);
   }
 
-  @Get('like-status/:videoId')
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
-  @ApiOperation({ summary: '좋아요 여부 조회' })
-  async getLikeStatus(
-    @Param('videoId') videoId: string,
-    @User() user?: CreateUserDto,
-  ) {
-    return this.videoService.getLikeStatus(videoId, user.id)
+  @ApiOperation({ summary: '좋아요 여부·개수' })
+  @ApiParam({ name: 'videoId' })
+  @ApiResponse({
+    status: 200,
+    schema: { example: { liked: true, likeCount: 10 } },
+  })
+  @ApiResponse({ status: 401, description: '미인증' })
+  @Get('like-status/:videoId')
+  async getLikeStatus(@Param('videoId') videoId: string, @User() user?: CreateUserDto) {
+    return this.videoService.getLikeStatus(videoId, user.id);
   }
 
-  @ApiOperation({ summary: 'Mux upload용 URL 발급' })
-  @ApiResponse({
-    status: 201,
-    description: 'Direct Upload용 Mux URL 발급',
-    type: MuxUploadResponseDto,
-  })
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
+  @ApiOperation({ summary: 'Mux Direct Upload URL 발급' })
+  @ApiResponse({ status: 201, type: MuxUploadResponseDto })
+  @ApiResponse({ status: 401, description: '미인증' })
   @Post('uploadUrl')
   async getUploadUrl(@User() user: CreateUserDto) {
     return this.muxService.createDirectUpload(user);
   }
 
-  @ApiOperation({ summary: 'Mux 업로드 완료 후 등록 요청' })
-  @ApiResponse({
-    status: 201,
-    description: 'Mux 영상 등록 성공',
-    type: VideoResponseDto,
-  })
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '업로드 완료 후 영상 등록', description: 'Mux 메타와 제목·설명 등 저장' })
+  @ApiBody({ type: RegisterMuxVideoDto })
+  @ApiResponse({ status: 201, description: '등록 결과' })
+  @ApiResponse({ status: 401, description: '미인증' })
+  @ApiResponse({ status: 500, description: '등록 실패' })
   @Post('register')
-  async registerMuxVideo(
-    @Body() body: RegisterMuxVideoDto,
-    @User() user: CreateUserDto,
-  ) {
+  async registerMuxVideo(@Body() body: RegisterMuxVideoDto, @User() user: CreateUserDto) {
     return this.videoService.registerMuxVideo(user, body);
   }
-  @ApiOperation({ summary: '웹훅' })
+
+  @ApiOperation({
+    summary: 'Mux 웹훅',
+    description: 'Raw JSON body + Mux-Signature. Swagger에서는 서명 검증이 어려우므로 실제는 Mux/Postman 등으로 호출.',
+  })
+  @ApiResponse({ status: 200, description: '{ received: true }' })
+  @ApiResponse({ status: 403, description: '서명 불일치' })
   @Post('webhook/mux')
   @HttpCode(200)
   async muxWebHook(@Req() req: Request, @Res() res: Response) {
     return this.videoService.muxWebHook(req, res);
   }
 
-  @ApiOperation({ summary: '조회수 증가' })
-  @ApiParam({ name: 'videoId', type: String, description: '조회수 증가시킬 비디오 ID' })
+  @ApiBearerAuth('access-token')
+  @UseGuards(AuthOptionalGuard)
+  @ApiOperation({
+    summary: '조회수 증가',
+    description: '로그인 시 회원 UUID 기준, 비로그인 시 IP. Authorization 헤더는 선택.',
+  })
+  @ApiParam({ name: 'videoId', description: '영상 UUID' })
   @ApiHeader({
     name: 'x-forwarded-for',
     required: false,
-    description: '비회원 식별용 IP (선택, 자동 처리됨)',
+    description: '프록시 뒤 비회원 IP (선택)',
   })
   @ApiResponse({
     status: 200,
-    description: '조회수 증가 성공',
     schema: {
       example: {
         message: '조회수 처리 완료',
@@ -251,23 +239,8 @@ export class VideoController {
       },
     },
   })
-  @ApiResponse({
-    status: 401,
-    description: '인증되지 않은 사용자',
-  })
-  @ApiResponse({
-    status: 400,
-    description: '유저 식별이 불가능합니다.',
-  })
-  @ApiResponse({
-    status: 404,
-    description: '존재하지 않는 영상입니다.',
-  })
-  @ApiResponse({
-    status: 500,
-    description: '조회수 처리 중 오류가 발생했습니다.',
-  })
-  @UseGuards(AuthOptionalGuard)
+  @ApiResponse({ status: 400, description: '유저·IP 식별 불가' })
+  @ApiResponse({ status: 404, description: '영상 없음' })
   @Post(':videoId')
   async viewCountVideos(
     @Param('videoId') videoId: string,
@@ -275,19 +248,20 @@ export class VideoController {
     @User() user?: CreateUserDto,
     @Ip() ip?: string,
   ) {
-    // 로그인 안한 친구는 ip 내놔....
     const clientIp = ip || req.socket.remoteAddress || 'unknown';
     return this.videoService.viewCountVideos(videoId, user, clientIp);
   }
+
+  @ApiBearerAuth('access-token')
   @UseGuards(AuthGuard)
+  @ApiOperation({ summary: '영상 삭제', description: '본인 업로드만' })
+  @ApiParam({ name: 'videoId' })
+  @ApiResponse({ status: 200, schema: { example: { message: '영상이 삭제되었습니다.' } } })
+  @ApiResponse({ status: 401, description: '미인증' })
+  @ApiResponse({ status: 403, description: '권한 없음' })
+  @ApiResponse({ status: 404, description: '영상 없음' })
   @Delete(':videoId')
-  async deleteVideo(
-    @Param('videoId') videoId: string,
-    @User() userId: CreateUserDto,
-  ) {
+  async deleteVideo(@Param('videoId') videoId: string, @User() userId: CreateUserDto) {
     return this.videoService.deleteVideo(videoId, userId.id);
   }
-
-  
 }
-
