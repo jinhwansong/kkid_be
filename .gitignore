@@ -1,6 +1,5 @@
 # compiled output
-# /dist 는 gitignore 하면 Render 등 일부 호스팅이 배포 번들에서 dist 를 빼서
-# "Cannot find module .../dist/main" 이 날 수 있음. dist 디렉터리는 커밋하지 말 것.
+/dist
 /node_modules
 /build
 

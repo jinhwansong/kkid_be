@@ -1,5 +1,5 @@
 # Render Blueprint — 대시보드만 쓸 때: Build npm ci && npm run build / Start npm start
-# Node: .node-version | dist/ 는 .gitignore 에 두지 말 것(Render 번들에서 제외됨)
+# Node: .node-version | Nest 산출물은 dist/main.js (tsconfig.build.json rootDir: src)
 services:
   - type: web
     name: kkid-be
