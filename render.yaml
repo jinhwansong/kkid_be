@@ -1,0 +1,8 @@
+# Render Blueprint — 대시보드만 쓸 때: Build npm ci && npm run build / Start npm start
+# Node 버전: .node-version (Render 권장)
+services:
+  - type: web
+    name: kkid-be
+    runtime: node
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
